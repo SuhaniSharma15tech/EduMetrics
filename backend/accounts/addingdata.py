@@ -1,17 +1,15 @@
 #later use this analyis engibe @api_view(['POST'])
 
 from .models import AdvisorAuth
-from rest_framework.response import Response
 
-def sync(request):
-    advisor_id = request.data.get('advisor_id')
-    password   = request.data.get('password')
+def sync():
+    for adv in Advisor.objects.using('client_db').all():
+        advisor_name = adv.advisor_name
+        advisor_id = adv.advisor_id
+        class_id = adv.class_id
 
-    if not AdvisorAuth.objects.filter(advisor_id=advisor_id).exists():
-        client = Advisor.objects.using('client_db').get(advisor_id=advisor_id)
-        if client.password == password:
-            auth = AdvisorAuth(advisor_id=advisor_id)
-            auth.set_password(password)  # hashes
+        if not AdvisorAuth.objects.filter(advisor_id=advisor_id).exists():
+            auth = AdvisorAuth(advisor_id=advisor_id, advisor_name=advisor_name,class_id=class_id)
             auth.save()
 
-    return Response({'message': 'synced'})
+    return {'message': 'synced'}

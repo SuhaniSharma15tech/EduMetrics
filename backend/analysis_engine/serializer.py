@@ -9,7 +9,7 @@ class weekly_flagSerializer(serializers.ModelSerializer):
 class performanceSerializer(serializers.ModelSerializer):
     def __init__(self,*args,**kwargs):
         fields=kwargs.pop('fields',None)
-        super().__init__(self,*args,**kwargs)
+        super().__init__(*args,**kwargs)
         for f in set(self.fields)-set(fields):
             self.fields.pop(f)
     class Meta:

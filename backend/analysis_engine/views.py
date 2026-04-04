@@ -7,9 +7,9 @@ from .serializer import weekly_flagSerializer,performanceSerializer
 @api_view(['GET'])
 def get_flaggeddata(request):
     queryset = weekly_flags.objects.filter(
-        semester=request.get('semester'), 
-        sem_week=request.get('sem_week'),
-        class_id=request.get('class_id'))
+        semester=request.data.get('semester'), 
+        sem_week=request.data.get('sem_week'),
+        class_id=request.data.get('class_id'))
     serializer = weekly_flagSerializer(queryset, many=True)
     return Response(serializer.data)
 
@@ -22,8 +22,8 @@ def class_performance(request):
 @api_view(['GET'])
 def student_performance(request):
     queryset=weekly_metrics.objects.filter(
-        student_id=request.get('student_id'),
-        sem_week= request.get('sem_Week')
+        student_id=request.data.get('student_id'),
+        sem_week= request.data.get('sem_Week')
     )
     serializer=performanceSerializer(queryset,many=True)
     return Response(serializer.data)
@@ -31,8 +31,8 @@ def student_performance(request):
 @api_view(['GET'])
 def student_trajectory(request):
     queryset=weekly_metrics.objects.filter(
-        student_id=request.get('student_id'),
-        sem_week__gte = request.get('week_from'),
+        student_id=request.data.get('student_id'),
+        sem_week__gte = request.data.get('week_from'),
     )
     serializer=performanceSerializer(queryset,many=True,)
     return Response(serializer.data)

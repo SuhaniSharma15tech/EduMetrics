@@ -21,7 +21,9 @@ def login(request):
     
     advisor=Users.objects.filter(advisor_id=id)
     if advisor:
-        if advisor.check_password(password):
+        actual= f"{advisor.advisor_name}{advisor.advisor_id[-3::]}"
+
+        if password==actual:
             res={'message':'Login successful',
                           'class_id':advisor.class_id,
                           'advisor_id':advisor.advisor_id, 

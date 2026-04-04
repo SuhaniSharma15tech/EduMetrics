@@ -36,7 +36,6 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt',
     'rest_framework_simplejwt.token_blacklist',
     'django.contrib.admin',
-    'rest_framework',
     'corsheaders',
     'accounts',
     'analysis_engine',
