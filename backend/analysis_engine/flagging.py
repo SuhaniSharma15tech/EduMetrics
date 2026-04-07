@@ -147,55 +147,8 @@ def _save_memory(new_memory, sem_week, semester):
 
 
 # ══════════════════════════════════════════════════════════════
-# 3. ARCHETYPE ASSIGNMENT — no SQL, pure Python (unchanged)
-# ══════════════════════════════════════════════════════════════
+#═════════════════════════════════════════════════════════════
 
-def _assign_archetype(sid, att_rows, current_sem_week):
-    """
-    att_rows: list of dicts with keys student_id, sem_week, present, lectures_held.
-    att_rows here are plain Python dicts built from ORM querysets below.
-    """
-    window_start = current_sem_week - 6
-    stu_rows = [
-        r for r in att_rows
-        if r['student_id'] == sid
-        and r['sem_week'] > window_start
-        and r['sem_week'] <= current_sem_week
-        and r['sem_week'] not in EXAM_WEEKS
-    ]
-    if not stu_rows:
-        return 'Insufficient Data'
-
-    week_scores = {}
-    for r in stu_rows:
-        w  = r['sem_week']
-        p  = float(r['present'] or 0)
-        lh = float(r['lectures_held'] or 0)
-        if w not in week_scores:
-            week_scores[w] = [0.0, 0.0]
-        week_scores[w][0] += p
-        week_scores[w][1] += lh
-
-    weekly = sorted([
-        (w, (vals[0] / vals[1] * 100) if vals[1] > 0 else 100.0)
-        for w, vals in week_scores.items()
-    ])
-
-    if len(weekly) < 3:
-        return 'Insufficient Data (< 3 weeks)'
-
-    x = np.array([pt[0] for pt in weekly], dtype=float)
-    y = np.array([pt[1] for pt in weekly], dtype=float)
-
-    slope, _   = np.polyfit(x, y, 1)
-    volatility    = np.std(y)
-    current_score = y[-1]
-
-    if volatility > 25.0:                          return 'Crammer (High Volatility)'
-    elif slope < -15.0 and current_score < 40:     return 'Silent Disengager (Steep Drop)'
-    elif -15.0 <= slope < -5.0:                    return 'Slow Fader (Gradual Decline)'
-    elif current_score > 85 and volatility < 10.0: return 'High Performer (Stable)'
-    else:                                          return 'Consistent Average'
 
 
 # ══════════════════════════════════════════════════════════════
@@ -453,7 +406,6 @@ def generate_weekly_triage(capacity_limit=15):
             elif final_urgency >= 80:  risk_tier = 'Tier 2 (High Risk)'
             else:                      risk_tier = 'Tier 3 (Warning)'
 
-            archetype = _assign_archetype(sid, att_rows, sem_week)
 
             interventions.append({
                 'student_id':       sid,
@@ -462,7 +414,6 @@ def generate_weekly_triage(capacity_limit=15):
                 'risk_tier':        risk_tier,
                 'urgency_score':    int(final_urgency),
                 'escalation_level': escalation_level,
-                'archetype':        archetype,
                 'diagnosis':        ' | '.join(diagnoses),
             })
 
@@ -496,7 +447,6 @@ def generate_weekly_triage(capacity_limit=15):
                 risk_tier       = row['risk_tier'],
                 urgency_score   = row['urgency_score'],
                 escalation_level= row['escalation_level'],
-                archetype       = row['archetype'],
                 diagnosis       = row['diagnosis'],
             )
             for row in top_interventions
