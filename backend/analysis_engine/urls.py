@@ -17,14 +17,20 @@ from .views import (
     # Pre-sem watchlist (NEW)
     pre_sem_watchlist_list,
     pre_sem_watchlist_student,
+    trigger_calibrate,
 )
 
 urlpatterns = [
     # ── Existing endpoints ─────────────────────────────────────
+    # GET /analysis/get_flaggeddata/ — body: semester, sem_week, class_id
     path('get_flaggeddata/', get_flaggeddata, name='get_flaggeddata'),
+    # GET /analysis/class_performance/ — body: class_id
     path('class_performance/', class_performance, name='class_performance'),
+    # GET /analysis/student_performance/ — body: student_id, sem_week
     path('student_performance/', student_performance, name='student_performance'),
+    # GET /analysis/student_trajectory/ — body: student_id, week_from
     path('student_trajectory/', student_trajectory, name='student_trajectory'),
+
 
     # ── Pre-Mid Term predictions (NEW) ─────────────────────────
     # GET /analysis/pre_mid_term/?class_id=X&semester=Y[&sem_week=6|7]
@@ -49,4 +55,7 @@ urlpatterns = [
     path('pre_sem_watchlist/', pre_sem_watchlist_list, name='pre_sem_watchlist_list'),
     # GET /analysis/pre_sem_watchlist/student/?student_id=X[&target_semester=Y]
     path('pre_sem_watchlist/student/', pre_sem_watchlist_student, name='pre_sem_watchlist_student'),
+
+    #for testing: trigger analysis
+    path('trigger_calibrate/',trigger_calibrate,name='trigger_calibrate')
 ]
