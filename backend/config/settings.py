@@ -93,12 +93,12 @@ DATABASES = {
 
     # Simulator's DB — read only, direct connection
     'client_db': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'edumetrics_client',
-        'HOST': 'your-simulator-railway-host',
-        'PORT': '3306',
-        'USER': '...',
-        'PASSWORD': '...',
+        'ENGINE': os.getenv('CLIENT_ENGINE'),
+        'NAME': os.getenv('CLIENT_NAME'),
+        'HOST': os.getenv('CLIENT_HOST'),
+        'PORT': os.getenv('CLIENT_PORT'),
+        'USER': os.getenv('CLIENT_USER'),
+        'PASSWORD': os.getenv('CLIENT_PASSWORD'),
     }
 }
 
