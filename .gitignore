@@ -7,5 +7,3 @@ __pycache__/
 *.sqlite3
 db.sqlite3
 .DS_Store
-API_REFERENCE.md
-CHANGES.md
