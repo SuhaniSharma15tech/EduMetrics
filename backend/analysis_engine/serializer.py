@@ -4,7 +4,7 @@ from .models import (
     weekly_metrics,
     pre_mid_term,
     pre_end_term,
-    risk_of_failing_prediction,
+    risk_of_failing,
     pre_sem_watchlist,
 )
 
@@ -44,7 +44,7 @@ class PreEndTermSerializer(serializers.ModelSerializer):
 
 class RiskOfFailingSerializer(serializers.ModelSerializer):
     class Meta:
-        model = risk_of_failing_prediction
+        model = risk_of_failing
         fields = '__all__'
 
 

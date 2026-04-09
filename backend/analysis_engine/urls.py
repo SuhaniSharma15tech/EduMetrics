@@ -1,61 +1,85 @@
+"""
+EduMetrics — analysis_engine/urls.py
+All routes under /api/analysis/ (configured in config/urls.py).
+"""
+
 from django.urls import path
 from .views import (
-    # Existing
-    get_flaggeddata,
-    class_performance,
-    student_performance,
-    student_trajectory,
-    # Pre-mid term (NEW)
+    # New frontend-optimised endpoints
+    dashboard_summary,
+    flagged_students,
+    all_students,
+    student_detail,
+    student_trajectory_view,
+    class_analytics,
+    last_week_comparison,
+    # Prediction endpoints
     pre_mid_term_list,
     pre_mid_term_student,
-    # Pre-end term (NEW)
     pre_end_term_list,
     pre_end_term_student,
-    # Risk of failing table (NEW)
     risk_of_failing_list,
     risk_of_failing_student,
-    # Pre-sem watchlist (NEW)
     pre_sem_watchlist_list,
     pre_sem_watchlist_student,
+    # Internal
     trigger_calibrate,
 )
 
 urlpatterns = [
-    # ── Existing endpoints ─────────────────────────────────────
-    # GET /analysis/get_flaggeddata/ — body: semester, sem_week, class_id
-    path('get_flaggeddata/', get_flaggeddata, name='get_flaggeddata'),
-    # GET /analysis/class_performance/ — body: class_id
-    path('class_performance/', class_performance, name='class_performance'),
-    # GET /analysis/student_performance/ — body: student_id, sem_week
-    path('student_performance/', student_performance, name='student_performance'),
-    # GET /analysis/student_trajectory/ — body: student_id, week_from
-    path('student_trajectory/', student_trajectory, name='student_trajectory'),
 
+    # ── DASHBOARD ──────────────────────────────────────────────────────────────
+    # GET /api/analysis/dashboard/summary/?class_id=X&semester=Y&sem_week=Z
+    path('dashboard/summary/', dashboard_summary, name='dashboard_summary'),
 
-    # ── Pre-Mid Term predictions (NEW) ─────────────────────────
-    # GET /analysis/pre_mid_term/?class_id=X&semester=Y[&sem_week=6|7]
-    path('pre_mid_term/', pre_mid_term_list, name='pre_mid_term_list'),
-    # GET /analysis/pre_mid_term/student/?student_id=X[&semester=Y]
+    # ── FLAGGED STUDENTS  (matches FLAGGED[] in app.js) ────────────────────────
+    # GET /api/analysis/flagged/?class_id=X&semester=Y&sem_week=Z
+    path('flagged/', flagged_students, name='flagged_students'),
+
+    # ── ALL STUDENTS ROSTER  (matches ALL_STUDENTS[] in app.js) ───────────────
+    # GET /api/analysis/students/?class_id=X&semester=Y&sem_week=Z
+    path('students/', all_students, name='all_students'),
+
+    # ── STUDENT DETAIL + TRAJECTORY ────────────────────────────────────────────
+    # GET /api/analysis/student/<student_id>/detail/?semester=Y&sem_week=Z
+    path('student/<str:student_id>/detail/',      student_detail,          name='student_detail'),
+    # GET /api/analysis/student/<student_id>/trajectory/?semester=Y[&from_week=1]
+    path('student/<str:student_id>/trajectory/', student_trajectory_view, name='student_trajectory'),
+
+    # ── CLASS ANALYTICS ────────────────────────────────────────────────────────
+    # GET /api/analysis/analytics/?class_id=X&semester=Y&sem_week=Z
+    path('analytics/', class_analytics, name='class_analytics'),
+
+    # ── LAST WEEK COMPARISON  (matches LAST_WEEK[] in app.js) ─────────────────
+    # GET /api/analysis/last_week/?class_id=X&semester=Y&sem_week=Z
+    path('last_week/', last_week_comparison, name='last_week_comparison'),
+
+    # ── PRE-MID TERM PREDICTIONS ───────────────────────────────────────────────
+    # GET /api/analysis/pre_mid_term/?class_id=X&semester=Y[&sem_week=6|7]
+    path('pre_mid_term/',         pre_mid_term_list,    name='pre_mid_term_list'),
+    # GET /api/analysis/pre_mid_term/student/?student_id=X[&semester=Y]
     path('pre_mid_term/student/', pre_mid_term_student, name='pre_mid_term_student'),
 
-    # ── Pre-End Term predictions (NEW) ─────────────────────────
-    # GET /analysis/pre_end_term/?class_id=X&semester=Y
-    path('pre_end_term/', pre_end_term_list, name='pre_end_term_list'),
-    # GET /analysis/pre_end_term/student/?student_id=X[&semester=Y]
+    # ── PRE-END TERM PREDICTIONS ───────────────────────────────────────────────
+    # GET /api/analysis/pre_end_term/?class_id=X&semester=Y
+    path('pre_end_term/',         pre_end_term_list,    name='pre_end_term_list'),
+    # GET /api/analysis/pre_end_term/student/?student_id=X[&semester=Y]
     path('pre_end_term/student/', pre_end_term_student, name='pre_end_term_student'),
 
-    # ── Risk of Failing predictions (NEW) ──────────────────────
-    # GET /analysis/risk_of_failing/?class_id=X&semester=Y[&sem_week=Z]
-    path('risk_of_failing/', risk_of_failing_list, name='risk_of_failing_list'),
-    # GET /analysis/risk_of_failing/student/?student_id=X[&semester=Y]
+    # ── RISK OF FAILING ────────────────────────────────────────────────────────
+    # GET /api/analysis/risk_of_failing/?class_id=X&semester=Y[&sem_week=Z]
+    path('risk_of_failing/',         risk_of_failing_list,    name='risk_of_failing_list'),
+    # GET /api/analysis/risk_of_failing/student/?student_id=X[&semester=Y]
     path('risk_of_failing/student/', risk_of_failing_student, name='risk_of_failing_student'),
 
-    # ── Pre-Sem Watchlist (NEW) ────────────────────────────────
-    # GET /analysis/pre_sem_watchlist/?class_id=X&target_semester=Y
-    path('pre_sem_watchlist/', pre_sem_watchlist_list, name='pre_sem_watchlist_list'),
-    # GET /analysis/pre_sem_watchlist/student/?student_id=X[&target_semester=Y]
+    # ── PRE-SEM WATCHLIST ──────────────────────────────────────────────────────
+    # GET /api/analysis/pre_sem_watchlist/?class_id=X&target_semester=Y
+    path('pre_sem_watchlist/',         pre_sem_watchlist_list,    name='pre_sem_watchlist_list'),
+    # GET /api/analysis/pre_sem_watchlist/student/?student_id=X[&target_semester=Y]
     path('pre_sem_watchlist/student/', pre_sem_watchlist_student, name='pre_sem_watchlist_student'),
 
-    #for testing: trigger analysis
-    path('trigger_calibrate/',trigger_calibrate,name='trigger_calibrate')
+    # ── INTERNAL ───────────────────────────────────────────────────────────────
+    # POST /api/analysis/trigger_calibrate/
+    path('trigger_calibrate/', trigger_calibrate, name='trigger_calibrate'),
+
 ]

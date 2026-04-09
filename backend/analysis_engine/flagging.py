@@ -135,11 +135,11 @@ def _save_memory(new_memory, sem_week, semester):
 
     logs = [
         InterventionLog(
-            student_id       = sid,
-            semester         = semester,
-            sem_week         = sem_week,
-            escalation_level = data['escalation_level'],
-            trigger_diagnosis= data.get('diagnosis', ''),
+            student_id        = sid,
+            semester          = semester,
+            sem_week          = sem_week,
+            escalation_level  = data['escalation_level'],
+            notes             = data.get('diagnosis', ''),   # canonical SQL field
         )
         for sid, data in new_memory.items()
     ]
@@ -447,6 +447,7 @@ def generate_weekly_triage(capacity_limit=15):
                 risk_tier       = row['risk_tier'],
                 urgency_score   = row['urgency_score'],
                 escalation_level= row['escalation_level'],
+                archetype       = row.get('archetype'),
                 diagnosis       = row['diagnosis'],
             )
             for row in top_interventions

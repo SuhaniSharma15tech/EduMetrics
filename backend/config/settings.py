@@ -138,11 +138,6 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",
-    "http://localhost:5173",
-]
-
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework_simplejwt.authentication.JWTAuthentication',
@@ -161,3 +156,20 @@ SIMPLE_JWT = {
 
 DATABASE_ROUTERS = ['analysis_engine.routers.EduMetricsRouter']
 
+
+# ── CORS (extend to allow frontend file:// and common dev ports) ──────────────
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "http://localhost:5173",
+    "http://localhost:8080",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:8080",
+]
+# During development with a plain HTML frontend opened from file:// you can
+# set CORS_ALLOW_ALL_ORIGINS = True in a local .env override.
+CORS_ALLOW_ALL_ORIGINS = False   # flip to True locally if needed
+
+# ── Allow the trigger_calibrate endpoint without auth (it's secret-key guarded)
+# Add any view names here that should bypass JWT authentication.
+# (Handled by @csrf_exempt + secret-header check in views.py)

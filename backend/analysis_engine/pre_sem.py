@@ -90,9 +90,9 @@ def _pull_student_features(completed_semester):
         .filter(semester=completed_semester)
         .values('student_id', 'class_id')
         .annotate(
-            att_rate       = Avg('att_rate_recent'),
-            assn_rate      = Avg('assn_submit_rate_recent'),
-            max_plagiarism = DMax('assn_plagiarism_max'),
+            att_rate       = Avg('overall_att_pct'),
+            assn_rate      = Avg('assn_submit_rate'),
+            max_plagiarism = DMax('assn_plagiarism_pct'),
         )
     )
 

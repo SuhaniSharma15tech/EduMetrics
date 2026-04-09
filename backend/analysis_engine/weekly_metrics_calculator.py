@@ -493,22 +493,21 @@ def run():
         )
 
         fields = dict(
-            class_id                = cid,
-            effort_score            = effort,
-            library_visits_w        = lib_v,
-            book_borrows_w          = book_b,
-            assn_quality_avg        = assn_qual,
-            assn_plagiarism_max     = assn_plag,
-            att_rate_recent         = att_r,
-            quiz_submit_rate_recent = quiz_sr,
-            assn_submit_rate_recent = assn_sr,
-            academic_performance    = ap,
-            quiz_avg_pct            = quiz_avg,
-            assn_avg_pct            = assn_avg,
-            midterm_score_pct       = midterm_pct,
-            weight_m                = WEIGHT_M,
-            weight_n                = WEIGHT_N,
-            weight_p                = WEIGHT_P,
+            class_id            = cid,
+            effort_score        = effort,
+            # SQL schema column names
+            library_visits      = lib_v,
+            book_borrows        = book_b,
+            assn_quality_pct    = assn_qual,
+            assn_plagiarism_pct = assn_plag,
+            weekly_att_pct      = att_r * 100 if att_r is not None else None,
+            quiz_attempt_rate   = quiz_sr,
+            assn_submit_rate    = assn_sr,
+            academic_performance = ap,
+            quiz_avg_pct        = quiz_avg,
+            assn_avg_pct        = assn_avg,
+            midterm_score_pct   = midterm_pct,
+            # weight_m/n/p removed — not in SQL schema
         )
 
         if sid in existing:

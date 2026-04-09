@@ -160,17 +160,17 @@ def _log_event(event_type, client_week, analysis_sem_week, semester,
 
 SCRIPT_REGISTRY = {
     # Weekly (run every teaching week)
-    'weekly_metrics':    ('weekly_metrics_calculator', 'run'),
-    'weekly_flags':      ('flagging',                  'generate_weekly_triage'),
-    'risk_of_detention': ('risk_of_detention',         'run_detention_risk'),
-    'risk_of_failing':   ('risk_of_failing',           'run_failing_risk'),
+    'weekly_metrics':    ('analysis_engine.weekly_metrics_calculator', 'run'),
+    'weekly_flags':      ('analysis_engine.flagging', 'generate_weekly_triage'),
+    'risk_of_detention': ('analysis_engine.risk_of_detention', 'run_detention_risk'),
+    'risk_of_failing':   ('analysis_engine.risk_of_failing',   'run_failing_risk'),
 
     # Event-based (run once at a specific week)
-    'pre_mid_sem':  ('pre_mid_term',  'run'),
+    'pre_mid_sem':  ('analysis_engine.pre_mid_term', 'run'),
     'post_mid_sem': None,   # not yet written
-    'pre_end_sem':  ('pre_end_term',  'run'),
+    'pre_end_sem':  ('analysis_engine.pre_end_term', 'run'),
     'post_end_sem': None,   # not yet written
-    'pre_sem':      ('pre_sem',       'run'),
+    'pre_sem':      ('analysis_engine.pre_sem', 'run'),
 }
 
 

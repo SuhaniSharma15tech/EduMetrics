@@ -30,9 +30,9 @@ class ClientClass(models.Model):
     batch_start_year = models.IntegerField(null=True)
     academic_year   = models.CharField(max_length=12, null=True)
     total_students  = models.IntegerField(null=True)
-    # Your sim has odd_sem / even_sem columns too — add if needed:
-    # odd_sem         = models.IntegerField(null=True)
-    # even_sem        = models.IntegerField(null=True)
+    # Semester numbers for each slot — used by calibrate_analysis_db
+    odd_sem         = models.IntegerField(null=True)
+    even_sem        = models.IntegerField(null=True)
 
     class Meta:
         managed  = False
@@ -120,7 +120,7 @@ class ClientSimState(models.Model):
     current_week = models.IntegerField()
     semester_start = models.DateField()
     last_updated = models.DateTimeField(auto_now=True)
-    # Add sim_year if your version of sim_state has it:
+    # Add sim_year if wanted:
     # sim_year     = models.IntegerField(null=True)
 
     class Meta:
@@ -158,7 +158,7 @@ class ClientAssignmentDefinition(models.Model):
     assigned_week = models.IntegerField()
     due_week      = models.IntegerField()
     max_marks     = models.IntegerField(default=10)
-    # Add semester if your version has it:
+    # Add semester if wanted:
     # semester      = models.IntegerField(null=True)
 
     class Meta:
@@ -196,7 +196,7 @@ class ClientQuizDefinition(models.Model):
     quiz_date      = models.DateField(null=True)
     max_marks      = models.IntegerField(default=10)
     duration_mins  = models.IntegerField(default=20)
-    # Add semester if your version has it:
+    # Add semester if wanted:
     # semester       = models.IntegerField(null=True)
 
     class Meta:
@@ -230,7 +230,7 @@ class ClientLibraryVisit(models.Model):
     week            = models.IntegerField()
     week_date       = models.DateField(null=True)
     physical_visits = models.IntegerField(default=0)
-    # Add semester if your version has it:
+    # Add semester if wanted:
     # semester        = models.IntegerField(null=True)
 
     class Meta:
@@ -249,7 +249,7 @@ class ClientBookBorrow(models.Model):
     return_date = models.DateField(null=True)
     borrow_week = models.IntegerField(null=True)
     return_week = models.IntegerField(null=True)
-    # Add semester if your version has it:
+    # Add semester if wanted:
     # semester    = models.IntegerField(null=True)
 
     class Meta:
@@ -268,7 +268,7 @@ class ClientExamSchedule(models.Model):
     exam_date      = models.DateField(null=True)
     max_marks      = models.IntegerField(default=50)
     duration_mins  = models.IntegerField(default=120)
-    # Add semester if your version has it:
+    # Add semester if wanted:
     # semester       = models.IntegerField(null=True)
 
     class Meta:
