@@ -23,6 +23,8 @@ AUTH_USER_MODEL = 'accounts.Users'
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
+
+load_dotenv()  # Load environment variables from .env file
 SECRET_KEY = os.getenv('DJANGO_SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
@@ -152,6 +154,8 @@ SIMPLE_JWT = {
     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),    
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,
+    "USER_ID_FIELD": "advisor_id",  # <--- Change this to match your model's PK
+    "USER_ID_CLAIM": "user_id",
 }
 
 DATABASE_ROUTERS = ['analysis_engine.routers.EduMetricsRouter']

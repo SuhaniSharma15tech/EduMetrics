@@ -50,6 +50,7 @@
 """
 
 import os
+import sys
 import traceback
 
 from django.db.models import Avg, Max
@@ -225,6 +226,7 @@ def dashboard_summary(request):
 
 @api_view(['GET'])
 def flagged_students(request):
+    sys.stdout.write('i nside')
     """
     GET /api/analysis/flagged/?class_id=X&semester=Y&sem_week=Z
 
@@ -339,7 +341,6 @@ def flagged_students(request):
             'factors':     factors,
             'majorFactor': major_factor,
         })
-
     return Response(result)
 
 

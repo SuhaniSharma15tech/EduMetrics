@@ -5,14 +5,12 @@ Base URLs:
   /api/analysis/  — all analysis engine endpoints (preferred)
   /api/login/     — JWT login
   /api/logout/    — JWT logout
-  /health/        — Railway / Render health-check
 """
 
 from django.contrib import admin
 from django.urls import path, include
 from accounts.views import login
 from rest_framework_simplejwt.views import TokenBlacklistView, TokenRefreshView
-from analysis_engine.views import health
 
 urlpatterns = [
     path('admin/', admin.site.urls),

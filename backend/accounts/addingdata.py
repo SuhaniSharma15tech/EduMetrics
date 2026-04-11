@@ -5,7 +5,7 @@ from analysis_engine.client_models import ClientAdvisor
 
 def sync():
     for adv in ClientAdvisor.objects.all():
-        advisor_name = adv.advisor_name
+        advisor_name = adv.name
         advisor_id = adv.advisor_id
         class_id = adv.class_id
 
@@ -14,3 +14,4 @@ def sync():
             user.save()
 
     return {'message': 'synced'}
+

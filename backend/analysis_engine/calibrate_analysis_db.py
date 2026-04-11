@@ -192,7 +192,10 @@ def _run_script(event_name, client_week, sem_week, semester):
     try:
         mod  = importlib.import_module(module_path)
         func = getattr(mod, func_name)
-        func()
+        try:
+            func(sem_week=sem_week, semester=semester)
+        except TypeError:
+            func()   # fallback for scripts that don't accept params yet
         ms = int((time.monotonic() - t0) * 1000)
         print(f'    [OK]   {event_name}  ({ms} ms)')
         _log_event(event_name, client_week, sem_week, semester, duration_ms=ms)
@@ -205,8 +208,12 @@ def _run_script(event_name, client_week, sem_week, semester):
         return False
     except Exception as e:
         ms = int((time.monotonic() - t0) * 1000)
-        print(f'    [ERR]  {event_name} — {e}')
-        print(traceback.format_exc())
+        # Check if it's the pickle error
+        if "invalid load key" in str(e):
+            print(f'    [WARNING] {event_name} — Model file is corrupted. Skipping.')
+        else:
+            print(f'    [ERR]   {event_name} — {e}')
+        
         _log_event(event_name, client_week, sem_week, semester, status='error',
                    error_msg=str(e)[:2000], duration_ms=ms)
         return False
@@ -386,6 +393,7 @@ def calibrate():
     rollback_to_week(). Blocks until all scripts have committed, then
     returns a summary dict that views.py serialises as JSON.
     """
+    
     t_start = time.monotonic()
     print(f"\n{'='*60}")
     print(f"  calibrate_analysis_db  —  {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
@@ -393,6 +401,9 @@ def calibrate():
 
     client   = _get_client_state()
     analysis = _get_analysis_state()
+
+    from accounts.addingdata import sync
+    sync()
 
     client_gw   = client['global_week']
     analysis_gw = analysis['global_week']

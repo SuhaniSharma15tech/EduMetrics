@@ -50,7 +50,7 @@ class weekly_metrics(models.Model):
 
     # Effort score (E_t, 0-100)
     effort_score        = models.DecimalField(max_digits=5, decimal_places=2, null=True)
-    library_visits      = models.IntegerField(default=0)
+    library_visits = models.IntegerField(default=0,null=True, blank=True)
     book_borrows        = models.IntegerField(default=0)
     assn_quality_pct    = models.DecimalField(max_digits=5, decimal_places=2, null=True)
     assn_plagiarism_pct = models.DecimalField(max_digits=5, decimal_places=2, null=True)
@@ -88,6 +88,7 @@ class weekly_metrics(models.Model):
         )
 
 WeeklyMetrics = weekly_metrics
+weekly_metrics=weekly_metrics
 
 
 # ============================================================
@@ -210,6 +211,12 @@ class weekly_flags(models.Model):
 
     class Meta:
         db_table = 'weekly_flags'
+        constraints = [
+        models.UniqueConstraint(
+            fields=['student_id', 'semester', 'sem_week'],
+            name='uq_wf_student_sem_week'
+        )
+    ]
         indexes = [
             models.Index(fields=['class_id', 'semester', 'sem_week'], name='idx_wf_class_sem_week'),
             models.Index(fields=['student_id'],                        name='idx_wf_student'),

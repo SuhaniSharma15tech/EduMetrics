@@ -1,4 +1,5 @@
-
+from rest_framework.permissions import AllowAny
+from rest_framework.decorators import permission_classes
 from rest_framework.decorators import api_view
 from .models import Users
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -12,6 +13,7 @@ def get_token(user):
     }
 
 @api_view(['POST'])
+@permission_classes([AllowAny])
 def login(request):
     id=request.data.get('advisor_id')
     password=request.data.get('password')

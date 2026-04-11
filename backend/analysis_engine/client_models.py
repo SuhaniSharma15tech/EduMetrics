@@ -23,12 +23,12 @@ from django.db import models
 class ClientClass(models.Model):
     class_id        = models.CharField(max_length=20, primary_key=True)
     name            = models.CharField(max_length=60)
-    semester        = models.IntegerField()
+    #semester        = models.IntegerField()
     year_of_study   = models.IntegerField()
     section         = models.CharField(max_length=5, default='A')
     branch          = models.CharField(max_length=20, default='CSE')
     batch_start_year = models.IntegerField(null=True)
-    academic_year   = models.CharField(max_length=12, null=True)
+    #academic_year   = models.CharField(max_length=12, null=True)
     total_students  = models.IntegerField(null=True)
     # Semester numbers for each slot — used by calibrate_analysis_db
     odd_sem         = models.IntegerField(null=True)
@@ -118,7 +118,7 @@ class ClientClassSubject(models.Model):
 class ClientSimState(models.Model):
     id           = models.IntegerField(primary_key=True, default=1)
     current_week = models.IntegerField()
-    semester_start = models.DateField()
+    sim_year = models.IntegerField()
     last_updated = models.DateTimeField(auto_now=True)
     # Add sim_year if wanted:
     # sim_year     = models.IntegerField(null=True)
@@ -135,6 +135,7 @@ class ClientAttendance(models.Model):
     student_id     = models.CharField(max_length=10)
     class_id       = models.CharField(max_length=20)
     subject_id     = models.CharField(max_length=15)
+    semester       = models.IntegerField()
     week           = models.IntegerField()
     week_date      = models.DateField()
     lectures_held  = models.IntegerField(default=3)
@@ -154,12 +155,13 @@ class ClientAssignmentDefinition(models.Model):
     assignment_id = models.CharField(max_length=15, primary_key=True)
     class_id      = models.CharField(max_length=20)
     subject_id    = models.CharField(max_length=15)
+    semester      = models.IntegerField(null=True)
     title         = models.CharField(max_length=120)
     assigned_week = models.IntegerField()
     due_week      = models.IntegerField()
     max_marks     = models.IntegerField(default=10)
     # Add semester if wanted:
-    # semester      = models.IntegerField(null=True)
+    
 
     class Meta:
         managed  = False
@@ -191,6 +193,7 @@ class ClientQuizDefinition(models.Model):
     quiz_id        = models.CharField(max_length=15, primary_key=True)
     class_id       = models.CharField(max_length=20)
     subject_id     = models.CharField(max_length=15)
+    semester      = models.IntegerField(null=True)
     title          = models.CharField(max_length=100)
     scheduled_week = models.IntegerField()
     quiz_date      = models.DateField(null=True)
@@ -227,6 +230,7 @@ class ClientLibraryVisit(models.Model):
     id              = models.BigAutoField(primary_key=True)
     student_id      = models.CharField(max_length=10)
     class_id        = models.CharField(max_length=20)
+    semester      = models.IntegerField(null=True)
     week            = models.IntegerField()
     week_date       = models.DateField(null=True)
     physical_visits = models.IntegerField(default=0)
@@ -244,6 +248,7 @@ class ClientBookBorrow(models.Model):
     borrow_id   = models.CharField(max_length=15, primary_key=True)
     student_id  = models.CharField(max_length=10)
     class_id    = models.CharField(max_length=20)
+    semester      = models.IntegerField(null=True)
     book_title  = models.CharField(max_length=120, null=True)
     borrow_date = models.DateField(null=True)
     return_date = models.DateField(null=True)
@@ -262,6 +267,7 @@ class ClientBookBorrow(models.Model):
 class ClientExamSchedule(models.Model):
     schedule_id    = models.CharField(max_length=15, primary_key=True)
     class_id       = models.CharField(max_length=20)
+    semester      = models.IntegerField(null=True)
     subject_id     = models.CharField(max_length=15)
     exam_type      = models.CharField(max_length=15)
     scheduled_week = models.IntegerField()

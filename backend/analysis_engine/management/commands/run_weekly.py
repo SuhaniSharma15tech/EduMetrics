@@ -1,9 +1,10 @@
 from django.core.management.base import BaseCommand
 from analysis_engine.weekly_metrics_calculator import run as run_metrics
-from analysis_engine.flagging import run as run_flagging
+from analysis_engine.flagging import generate_weekly_triage as run_flagging
 from analysis_engine.pre_mid_term import run as run_pre_mid
 from analysis_engine.pre_end_term import run as run_pre_end
 from analysis_engine.pre_sem import run as run_pre_sem
+from accounts.addingdata import sync
 
 
 class Command(BaseCommand):
@@ -28,5 +29,8 @@ class Command(BaseCommand):
 
         self.stdout.write('\n[5/5] Pre-semester watchlist (fires at semester boundary)...')
         run_pre_sem()
+
+        self.stdout.write('\n[6/5] Syncing advisors from client database...')
+        sync()
 
         self.stdout.write('\nDone.')

@@ -143,7 +143,7 @@ def _save_memory(new_memory, sem_week, semester):
         )
         for sid, data in new_memory.items()
     ]
-    InterventionLog.objects.bulk_create(logs)
+    InterventionLog.objects.bulk_create(logs, ignore_conflicts=True)
 
 
 # ══════════════════════════════════════════════════════════════
@@ -257,11 +257,13 @@ def _fetch_exams(sem_map, current_sem_week):
 #    Core logic is UNCHANGED — only the DB calls above changed.
 # ══════════════════════════════════════════════════════════════
 
-def generate_weekly_triage(capacity_limit=15):
+def generate_weekly_triage(capacity_limit=15,sem_week=None, semester=None):
     print("Initializing Weekly Rule-Based Triage Engine...")
 
     ctx            = _get_sim_context()
-    sem_week       = ctx['sem_week']
+    if sem_week is None:
+        sem_week = ctx['sem_week']
+    rep_semester = semester if semester else next(iter(ctx['sem_map'].values()))
     sem_map        = ctx['sem_map']
     baseline_weeks = ctx['baseline_weeks']
     is_grace       = ctx['is_grace_period']
@@ -452,7 +454,7 @@ def generate_weekly_triage(capacity_limit=15):
             )
             for row in top_interventions
         ]
-        WeeklyFlag.objects.bulk_create(flag_objs)
+        WeeklyFlag.objects.bulk_create(flag_objs, ignore_conflicts=True)
 
         breakdown = ', '.join(
             f"{cid}: {min(len(rows), capacity_limit)}"

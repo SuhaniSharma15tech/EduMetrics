@@ -394,10 +394,11 @@ def _compute_effort(
     plags = [float(r.get('plagiarism_pct') or 0) for r in assns_in_window]
     assn_plagiarism_max = max(plags) if plags else 0.0
 
+    # Ensure these variables are always at least 0
     lib_visits_w   = sum(int(r.get('physical_visits') or 0) for r in lib_rows
-                         if r['student_id'] == sid and r['sem_week'] in window_set)
+                         if r['student_id'] == sid and r['sem_week'] in window_set) or 0
     book_borrows_w = sum(1 for r in borrow_rows
-                         if r['student_id'] == sid and r['sem_week'] in window_set)
+                         if r['student_id'] == sid and r['sem_week'] in window_set) or 0
 
     s_lib    = min(lib_visits_w   / (5 * n_weeks), 1.0) * 100
     s_borrow = min(book_borrows_w / (2 * n_weeks), 1.0) * 100
@@ -433,11 +434,14 @@ def _compute_effort(
 # 6. MAIN FUNCTION
 # ══════════════════════════════════════════════════════════════
 
-def run():
+def run(sem_week=None, semester=None):
     print("  [weekly_metrics] Starting...")
 
     ctx           = _get_sim_context()
-    sem_week      = ctx['sem_week']
+    if sem_week is None:
+        sem_week = ctx['sem_week']
+    if semester is None:
+        semester = next(iter(ctx['sem_map'].values()))
     sem_map       = ctx['sem_map']
     effort_window = ctx['effort_window_weeks']
     rep_semester  = next(iter(sem_map.values()))
@@ -496,8 +500,8 @@ def run():
             class_id            = cid,
             effort_score        = effort,
             # SQL schema column names
-            library_visits      = lib_v,
-            book_borrows        = book_b,
+            library_visits      = lib_v or 0, 
+            book_borrows        = book_b or 0,
             assn_quality_pct    = assn_qual,
             assn_plagiarism_pct = assn_plag,
             weekly_att_pct      = att_r * 100 if att_r is not None else None,
