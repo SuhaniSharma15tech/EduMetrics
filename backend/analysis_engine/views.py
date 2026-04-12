@@ -874,6 +874,53 @@ def pre_sem_watchlist_student(request):
     return Response(PreSemWatchlistSerializer(qs, many=True).data)
 
 # ─────────────────────────────────────────────────────────────────────────────
+#  INTERVENTIONS  — matches app.js INTERVENTIONS[] structure exactly
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+@api_view(['GET'])
+def interventions_list(request):
+    """GET /api/analysis/interventions/?class_id=X&semester=Y&sem_week=Z"""
+    params, err = _require(request, 'class_id', 'semester', 'sem_week')
+    if err:
+        return err
+
+    class_id = params['class_id']
+    semester = int(params['semester'])
+    sem_week = int(params['sem_week'])
+
+    logs = intervention_log.objects.filter(
+        student_id__in=weekly_metrics.objects.filter(
+            class_id=class_id, semester=semester
+        ).values_list('student_id', flat=True),
+        semester=semester,
+        sem_week__lte=sem_week,
+    ).order_by('-sem_week', '-logged_at')
+
+    names = _name_map(class_id)
+
+    result = []
+    for log in logs:
+        sid  = log.student_id
+        name = names.get(sid, sid)
+        result.append({
+            'id':              log.id,
+            'student_id':      sid,
+            'name':            name,
+            'avatar':          _avatar(name),
+            'week':            log.sem_week,
+            'escalation_level': log.escalation_level,
+            'type':            f"Level {log.escalation_level} Escalation",
+            'date':            f"Week {log.sem_week}",
+            'diagnosis':       log.trigger_diagnosis or '',
+            'advisor_notified': log.advisor_notified,
+            'notes':           log.notes or '',
+        })
+
+    return Response(result)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 #  INTERNAL / INFRA
 # ─────────────────────────────────────────────────────────────────────────────
 

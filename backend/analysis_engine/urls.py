@@ -22,6 +22,7 @@ from .views import (
     risk_of_failing_student,
     pre_sem_watchlist_list,
     pre_sem_watchlist_student,
+    interventions_list,
     # Internal
     trigger_calibrate,
 )
@@ -77,6 +78,9 @@ urlpatterns = [
     path('pre_sem_watchlist/',         pre_sem_watchlist_list,    name='pre_sem_watchlist_list'),
     # GET /api/analysis/pre_sem_watchlist/student/?student_id=X[&target_semester=Y]
     path('pre_sem_watchlist/student/', pre_sem_watchlist_student, name='pre_sem_watchlist_student'),
+    
+    #GET /api/analysis/interventions/?class_id=CSE_Y1_A&semester=2&sem_week=9
+    path('interventions/', interventions_list, name='interventions_list'),
 
     # ── INTERNAL ───────────────────────────────────────────────────────────────
     # POST /api/analysis/trigger_calibrate/
