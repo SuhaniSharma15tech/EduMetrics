@@ -2,7 +2,7 @@
 #  analysis_engine/pre_sem/pre_sem.py  (Django ORM version)
 #
 #  Runs at week 1 of the EVEN semester.
-#  Uses Random Forest (joblib) to predict at-risk students.
+#  Uses Random Forest (JSON) to predict at-risk students.
 #  Writes results to pre_sem_watchlist.
 #
 #  All mysql.connector calls replaced with Django ORM.
@@ -12,10 +12,10 @@
 # ============================================================
 
 import os
+import json
 import warnings
 import traceback
 
-import joblib
 import numpy as np
 import pandas as pd
 
@@ -48,10 +48,13 @@ from analysis_engine.models import (
 _HERE       = os.path.dirname(os.path.abspath(__file__))
 MODEL_PATH  = os.getenv(
     'PRE_SEM_MODEL_PATH',
-    os.path.join(_HERE, 'models', 'student_risk_model.pkl'),
+    os.path.join(_HERE, 'models', 'student_risk_model.json'),
 )
 FEATURE_COLS              = ['att_rate', 'assn_rate', 'max_plagiarism', 'exam_avg', 'escalation_level']
 HARD_PASS_RATE_THRESHOLD  = 0.60
+
+# Sentinel used by sklearn Decision Trees for leaf nodes
+_LEAF_FLAG = -1
 
 
 # ══════════════════════════════════════════════════════════════
@@ -279,8 +282,8 @@ def _count_hard_subjects_per_student(next_semester, difficulty_map):
 
     hard_counts = {}
     for stu in student_qs:
-        sid    = stu['student_id']
-        cid    = stu['class_id']
+        sid      = stu['student_id']
+        cid      = stu['class_id']
         subjects = class_to_subjects.get(cid, [])
         hard_counts[sid] = sum(
             1 for s in subjects if difficulty_map.get(s) == 'hard'
@@ -290,36 +293,98 @@ def _count_hard_subjects_per_student(next_semester, difficulty_map):
 
 
 # ══════════════════════════════════════════════════════════════
-# 4. MODEL LOADING & PREDICTION (unchanged from original)
+# 4. MODEL LOADING & PREDICTION
 # ══════════════════════════════════════════════════════════════
 
+# Module-level cache so the JSON is only parsed once per process
+_model_cache = None
+
+
 def _load_model():
+    global _model_cache
+    if _model_cache is not None:
+        return _model_cache
+
     if not os.path.exists(MODEL_PATH):
         raise FileNotFoundError(
             f"  [pre_sem] Model file not found at '{MODEL_PATH}'.\n"
-            "  Set the PRE_SEM_MODEL_PATH env var or place student_risk_model.pkl "
+            "  Set the PRE_SEM_MODEL_PATH env var or place student_risk_model.json "
             "in the same directory as this script."
         )
-    model = joblib.load(MODEL_PATH)
+
+    with open(MODEL_PATH, 'r') as f:
+        model = json.load(f)
+
     print(f"  [pre_sem] Model loaded from {MODEL_PATH}")
 
-    if hasattr(model, 'feature_names_in_'):
-        trained_on = list(model.feature_names_in_)
-        if trained_on != FEATURE_COLS:
-            raise ValueError(
-                f"  [pre_sem] Feature mismatch!\n"
-                f"  Model expects : {trained_on}\n"
-                f"  Script sends  : {FEATURE_COLS}\n"
-                "  Retrain the model or update FEATURE_COLS to match."
-            )
+    # Feature-name guard (mirrors the original hasattr(model, 'feature_names_in_') check)
+    trained_on = model['meta']['feature_names_in_']
+    if trained_on != FEATURE_COLS:
+        raise ValueError(
+            f"  [pre_sem] Feature mismatch!\n"
+            f"  Model expects : {trained_on}\n"
+            f"  Script sends  : {FEATURE_COLS}\n"
+            "  Retrain the model or update FEATURE_COLS to match."
+        )
+
+    _model_cache = model
     return model
+
+
+def _predict_proba_json(model, X_arr):
+    """
+    Pure-numpy Random Forest inference replicating sklearn's predict_proba.
+
+    Each tree casts a probability vote by normalising its leaf's class counts.
+    Final probability = average vote across all trees.
+
+    Parameters
+    ----------
+    model : dict   Loaded from student_risk_model.json
+    X_arr : np.ndarray, shape (n_samples, n_features), dtype float64
+
+    Returns
+    -------
+    np.ndarray, shape (n_samples, n_classes)
+        Columns correspond to model['meta']['classes_'].
+    """
+    trees     = model['estimators']
+    n_classes = model['meta']['n_classes_']
+    n_samples = X_arr.shape[0]
+
+    all_proba = np.zeros((n_samples, n_classes), dtype=np.float64)
+
+    for tree in trees:
+        feature        = tree['feature']
+        threshold      = tree['threshold']
+        children_left  = tree['children_left']
+        children_right = tree['children_right']
+        value          = tree['value']   # list of [count_class0, count_class1, ...] per node
+
+        for i in range(n_samples):
+            node = 0
+            while children_left[node] != _LEAF_FLAG:
+                if X_arr[i, feature[node]] <= threshold[node]:
+                    node = children_left[node]
+                else:
+                    node = children_right[node]
+
+            leaf_counts = np.array(value[node], dtype=np.float64)
+            total = leaf_counts.sum()
+            all_proba[i] += leaf_counts / total if total > 0 else leaf_counts
+
+    all_proba /= len(trees)
+    return all_proba
 
 
 def _run_predictions(model, df):
     X = df[FEATURE_COLS].copy()
     for col in FEATURE_COLS:
         X[col] = pd.to_numeric(X[col], errors='coerce').fillna(0)
-    probs = model.predict_proba(X)[:, 1]
+
+    X_arr = X.values.astype(np.float64)
+    probs = _predict_proba_json(model, X_arr)[:, 1]   # class-1 = at-risk
+
     df = df.copy()
     df['risk_probability_pct'] = (probs * 100).round(2)
     return df
@@ -379,8 +444,8 @@ def run():
     print(f"  [pre_sem] Features pulled for {len(df)} student-class records.")
 
     # ── Subject difficulty ─────────────────────────────────────
-    difficulty_map          = _compute_and_cache_subject_difficulty(completed_semester)
-    hard_counts             = _count_hard_subjects_per_student(next_semester, difficulty_map)
+    difficulty_map           = _compute_and_cache_subject_difficulty(completed_semester)
+    hard_counts              = _count_hard_subjects_per_student(next_semester, difficulty_map)
     df['hard_subject_count'] = df['student_id'].map(hard_counts).fillna(0).astype(int)
 
     # ── Load model and predict ─────────────────────────────────

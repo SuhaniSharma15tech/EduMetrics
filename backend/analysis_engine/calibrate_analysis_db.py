@@ -1,3 +1,17 @@
+'''
+calibrate() is called when simulator triggers
+it calls _get_client_state() and __get_analysis_state() to know gw of client db and gw of analysis db
+if gw_client>gw_analysis=> advance_analysis_db(gw_analysis,gw_client) is called
+elif gw_client<gw_analysis=> rollback_analysis_db(gw_client) is called
+elif gw_client=gw_analysis no func is called
+
+advance_analysis_db(gw_analysis,gw_client) runs a loop and uses script_registery,__script_for_week(),__run_script() to write analysis db week by week
+'''
+
+
+
+
+
 # this file replaces calibrate_analysis_db.py in the non-django version
 
 # working=>
@@ -63,20 +77,31 @@ PRE_SEM_WEEK                = 18
 # 2. WEEK / SEMESTER HELPERS
 # ══════════════════════════════════════════════════════════════
 
+# NOTE : checked 
+# ensures week 19 is read as week 1 sem 2
+# also returns if we are in odd or even sem
+# called by __advance__analysis_db() and each function expects to know global_week and all beforehand , so __advance__analysis_db() calls this and passes on the knowledge  to all the other function it calls
 def _global_to_sem_week(global_week):
     """Return (sem_week, slot) where slot is 'odd' or 'even'."""
     if global_week <= WEEKS_PER_SEM:
         return global_week, "odd"
     return global_week - WEEKS_PER_SEM, "even"
 
+
+
+# NOTE : checked 
+# checks if current week is exam week
 def _is_exam_week(sem_week):
     return sem_week in EXAM_WEEKS
+
+
 
 
 # ══════════════════════════════════════════════════════════════
 # 3. STATE READERS / WRITERS  (ORM replaces raw SQL)
 # ══════════════════════════════════════════════════════════════
 
+# NOTE : checked 
 def _get_client_state():
     """
     Read sim_state and classes from the client DB.
@@ -85,13 +110,17 @@ def _get_client_state():
     NOTE: ClientClass must have odd_sem / even_sem columns — uncomment
     those fields in client_models.py if they are currently commented out.
     """
-    state = ClientSimState.objects.using('client_db').get(id=1)
+    #full row defining sim state (sim state is not a field)
+    state = ClientSimState.objects.using('client_db').get(id=1)  
+    # we have a current_week field
     gw    = state.current_week
     sw, slot = _global_to_sem_week(max(gw, 1)) if gw > 0 else (0, "odd")
+
 
     classes = list(
         ClientClass.objects.using('client_db').values('class_id', 'odd_sem', 'even_sem')
     )
+
     sem_map = {
         c['class_id']: c['odd_sem'] if slot == 'odd' else c['even_sem']
         for c in classes
@@ -106,22 +135,32 @@ def _get_client_state():
     }
 
 
+
+# NOTE: which part of the code writes to analysis_state table of analysis db
+# actually _set_analysis_state() the one below it does this
 def _get_analysis_state():
     """
     Read the analysis_state singleton from the analysis DB.
     Returns a dict with global_week, sem_week, semester.
     """
     try:
+        # gets the single row in analysis_state table of analysis_db
         state = analysis_state.objects.get(id=1)
         return {
             'global_week': state.current_global_week,
             'sem_week':    state.current_sem_week,
+            # semester? does that mean odd and even? 1 for odd 2 for even?
             'semester':    state.current_semester,
         }
     except analysis_state.DoesNotExist:
         return {'global_week': 0, 'sem_week': 0, 'semester': 1}
 
 
+
+# NOTE: this function updates the singleton record of analysis_state table of analysis db
+# and it takes arguments , it's not doing maths it's just putting values into table
+# NOTE : we need to find the function that returns global_week,sem_week,semester week(not the one client db is in, but the global week upto which analysis db has been processesed) to this func
+# NOTE : checked 
 def _set_analysis_state(global_week, sem_week, semester):
     """Upsert the analysis_state singleton."""
     analysis_state.objects.update_or_create(
@@ -134,10 +173,13 @@ def _set_analysis_state(global_week, sem_week, semester):
     )
 
 
+
+
 # ══════════════════════════════════════════════════════════════
 # 4. EVENT LOG
 # ══════════════════════════════════════════════════════════════
-
+# NOTE: found it not very interesting
+# NOTE : checked 
 def _log_event(event_type, client_week, analysis_sem_week, semester,
                status='ok', error_msg=None, duration_ms=None):
     event_log.objects.create(
@@ -162,7 +204,7 @@ SCRIPT_REGISTRY = {
     # Weekly (run every teaching week)
     'weekly_metrics':    ('analysis_engine.weekly_metrics_calculator', 'run'),
     'weekly_flags':      ('analysis_engine.flagging', 'generate_weekly_triage'),
-    'risk_of_detention': ('analysis_engine.risk_of_detention', 'run_detention_risk'),
+    # 'risk_of_detention': ('analysis_engine.risk_of_detention', 'run_detention_risk'),
     'risk_of_failing':   ('analysis_engine.risk_of_failing',   'run_failing_risk'),
 
     # Event-based (run once at a specific week)
@@ -173,7 +215,10 @@ SCRIPT_REGISTRY = {
     'pre_sem':      ('analysis_engine.pre_sem', 'run'),
 }
 
-
+# client_week here is client gw 
+# sem_week is client sw
+# semester must be referring to even/odd i think
+# this returns result of the script or False if we get into import errors or pickle corrupt error or if the script is not written yet
 def _run_script(event_name, client_week, sem_week, semester):
     """
     Import and call the function registered under event_name.
@@ -189,17 +234,24 @@ def _run_script(event_name, client_week, sem_week, semester):
 
     module_path, func_name = entry
     t0 = time.monotonic()
+
     try:
         mod  = importlib.import_module(module_path)
+        # get the function from module
         func = getattr(mod, func_name)
-        try:
+        
+        # NOTE: crucial 
+        try:  
+            # if all the parameterised func would be called using sem_week and semester only why did we even take client gw as a parameter for __run_script()
             func(sem_week=sem_week, semester=semester)
         except TypeError:
             func()   # fallback for scripts that don't accept params yet
+
         ms = int((time.monotonic() - t0) * 1000)
         print(f'    [OK]   {event_name}  ({ms} ms)')
         _log_event(event_name, client_week, sem_week, semester, duration_ms=ms)
         return True
+
     except ModuleNotFoundError:
         ms = int((time.monotonic() - t0) * 1000)
         print(f'    [SKIP] {event_name} — module not found ({module_path})')
@@ -222,7 +274,10 @@ def _run_script(event_name, client_week, sem_week, semester):
 # ══════════════════════════════════════════════════════════════
 # 6. SCHEDULE: WHICH SCRIPTS RUN AT WHICH SEM_WEEK
 # ══════════════════════════════════════════════════════════════
-
+# NOTE: when u finalise whether risk_of_detention goes inside weekly_metrics_calculator.py or as a separate file called risk_of_detention.py clean it
+# sem_week is sw of client db
+# same with global_week
+# NOTE : checked 
 def _scripts_for_week(sem_week, global_week):
     """
     Return an ordered list of event_names to execute for this week.
@@ -238,11 +293,15 @@ def _scripts_for_week(sem_week, global_week):
 
     Exam weeks (8 and 18): no class data generated, nothing runs.
     """
-    # Exam weeks: nothing to run
-    if _is_exam_week(sem_week):
-        return []
+    
 
     scripts = []
+    # Exam weeks: nothing to run
+    if _is_exam_week(sem_week):
+        if sem_week==PRE_SEM_WEEK:
+            scripts.append('pre_sem')
+        return scripts
+    
 
     # 1. Core weekly signals — always first
     scripts.append('weekly_metrics')
@@ -252,7 +311,7 @@ def _scripts_for_week(sem_week, global_week):
         scripts.append('weekly_flags')
 
     # 3. Detention risk — every teaching week
-    scripts.append('risk_of_detention')
+    # scripts.append('risk_of_detention')
 
     # 4. Fail-risk prediction — week 10 onwards
     if sem_week >= RISK_OF_FAILING_WEEK:
@@ -266,9 +325,7 @@ def _scripts_for_week(sem_week, global_week):
     if sem_week == PRE_END_WEEK:
         scripts.append('pre_end_sem')
 
-    # 7. Pre-semester watchlist — week 18
-    if sem_week == PRE_SEM_WEEK:
-        scripts.append('pre_sem')
+    
 
     return scripts
 
@@ -276,7 +333,7 @@ def _scripts_for_week(sem_week, global_week):
 # ══════════════════════════════════════════════════════════════
 # 7. ROLLBACK: CLEAN THE ANALYSIS DB
 # ══════════════════════════════════════════════════════════════
-
+# NOTE : not checked but i feel it should be fine
 def _rollback_analysis_db(target_global_week):
     """
     Delete all derived rows computed beyond target_global_week, then
@@ -350,6 +407,7 @@ def _rollback_analysis_db(target_global_week):
 # 8. ADVANCE: FILL THE GAP WEEK BY WEEK
 # ══════════════════════════════════════════════════════════════
 
+# NOTE: checked
 def _advance_analysis_db(from_global_week, to_global_week, classes):
     """
     Walk from (from_global_week + 1) to to_global_week inclusive.
@@ -359,11 +417,16 @@ def _advance_analysis_db(from_global_week, to_global_week, classes):
     analysis_state is persisted after every single week so that if a script
     crashes mid-jump, the next calibrate() call resumes from where it left off.
     """
+    # this loop ensures we are doing the process week by week
     for gw in range(from_global_week + 1, to_global_week + 1):
         sw, slot = _global_to_sem_week(gw)
+        # slot means even/odd
 
         # All classes in the same cohort move together — use first class as
         # the representative for the semester value.
+        # logic of rep_semester
+        # if we are in odd sem then current classes are [1,3,5,7] sem , we take one of them as representative=> nothing just makes logs readable 
+        # similarly if we are in even sem [2,4,6,8] so one of them becomes represenative of the semester
         rep_semester = classes[0]['odd_sem'] if slot == 'odd' else classes[0]['even_sem']
 
         exam_tag = '[EXAM]' if _is_exam_week(sw) else ''
@@ -377,6 +440,10 @@ def _advance_analysis_db(from_global_week, to_global_week, classes):
                 _run_script(event_name, gw, sw, rep_semester)
 
         # Persist progress after every week — safe for partial advances
+        # NOTE: this is where __set_analysis_state() is called
+        # so gw is the week upto analysis db has been processed in each iteration not the gw that we aim to finally reach by last iteration
+        # so if something happened and we could only process till week 6 in our pursuit to process till week 8, week 6 becomes the gw of analysis db and so next time whenever calibrate() is called we resume from week 6 not week 8
+        # however if week 6 processing is interrupted before reaching this line ,gw of analysis db remains 5(if u think what about the 50% data of week 6 that got written into analysis db=> i  think that's updated when next calibrate call happens , i don't see a DBMS like rollback happening here automatically or maybe DJANGO handles it on its own)
         _set_analysis_state(gw, sw, rep_semester)
 
 
@@ -384,6 +451,7 @@ def _advance_analysis_db(from_global_week, to_global_week, classes):
 # 9. PUBLIC ENTRY POINT
 # ══════════════════════════════════════════════════════════════
 
+# NOTE: checked
 def calibrate():
     """
     Synchronise the analysis DB with the client DB.
@@ -402,9 +470,7 @@ def calibrate():
     client   = _get_client_state()
     analysis = _get_analysis_state()
 
-    from accounts.addingdata import sync
-    sync()
-
+    
     client_gw   = client['global_week']
     analysis_gw = analysis['global_week']
 
@@ -437,4 +503,5 @@ def calibrate():
     result['elapsed_ms'] = elapsed
     print(f'\n  Done — {elapsed} ms')
     print(f"{'='*60}\n")
+
     return result

@@ -855,7 +855,9 @@ def pre_sem_watchlist_list(request):
     target_semester = request.query_params.get('target_semester')
     if not class_id or not target_semester:
         return Response({'error': 'class_id and target_semester are required'}, status=400)
+    target_semester = int(target_semester)   # ← added cast
     qs = pre_sem_watchlist.objects.filter(class_id=class_id, target_semester=target_semester)
+    print(f"[DEBUG ...]  → {qs.count()} rows")
     return Response(PreSemWatchlistSerializer(qs, many=True).data)
 
 
@@ -863,7 +865,7 @@ def pre_sem_watchlist_list(request):
 def pre_sem_watchlist_student(request):
     """GET /api/analysis/pre_sem_watchlist/student/?student_id=X[&target_semester=Y]"""
     student_id      = request.query_params.get('student_id')
-    target_semester = request.query_params.get('target_semester')
+    target_semester = int(request.query_params.get('target_semester'))
     if not student_id:
         return Response({'error': 'student_id is required'}, status=400)
     qs = pre_sem_watchlist.objects.filter(student_id=student_id)

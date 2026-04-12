@@ -291,9 +291,9 @@ class pre_sem_watchlist(models.Model):
     risk_probability_pct = models.DecimalField(max_digits=5, decimal_places=2)
     escalation_level     = models.IntegerField(default=0)
     max_plagiarism       = models.DecimalField(max_digits=5, decimal_places=2, default=0)
-    att_rate_hist        = models.DecimalField(max_digits=5, decimal_places=4, null=True)
-    assn_rate_hist       = models.DecimalField(max_digits=5, decimal_places=4, null=True)
-    exam_avg_hist        = models.DecimalField(max_digits=5, decimal_places=2, null=True)
+    att_rate_hist        = models.DecimalField(max_digits=6, decimal_places=2, null=True)
+    assn_rate_hist       = models.DecimalField(max_digits=6, decimal_places=2, null=True)
+    exam_avg_hist        = models.DecimalField(max_digits=6, decimal_places=2, null=True)
     hard_subject_count   = models.IntegerField(default=0)
 
     class Meta:

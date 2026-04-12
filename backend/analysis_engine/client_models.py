@@ -115,14 +115,14 @@ class ClientClassSubject(models.Model):
 
 
 # ── 6. SIM STATE ──────────────────────────────────────────────
+# this needs to be a single row or this class can have just 1 object
+# it's only read by analysis db never written into by it
+# only simulator updates it 
 class ClientSimState(models.Model):
     id           = models.IntegerField(primary_key=True, default=1)
     current_week = models.IntegerField()
     sim_year = models.IntegerField()
     last_updated = models.DateTimeField(auto_now=True)
-    # Add sim_year if wanted:
-    # sim_year     = models.IntegerField(null=True)
-
     class Meta:
         managed  = False
         app_label = 'analysis_engine'

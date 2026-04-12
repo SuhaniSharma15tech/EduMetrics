@@ -39,9 +39,9 @@ from analysis_engine.models import weekly_metrics, PreEndTerm
 # ══════════════════════════════════════════════════════════════
 
 _HERE                     = os.path.dirname(os.path.abspath(__file__))
-ENDTERM_MODEL_WEIGHTS_PATH = os.path.join(_HERE, 'endterm_model_weights.json')
+ENDTERM_MODEL_WEIGHTS_PATH = os.path.join(_HERE,'models','endterm_model_weightsjson')
 # Fall back to midterm weights if endterm weights don't exist yet
-MIDTERM_MODEL_WEIGHTS_PATH = os.path.join(_HERE, 'model_weights.json')
+MIDTERM_MODEL_WEIGHTS_PATH = os.path.join(_HERE, 'models','midterm_model_weights.json')
 
 PRE_END_WEEK   = 17           # week at which this script fires
 ENDTERM_WEEK   = 18           # actual exam week (for reference)
@@ -276,7 +276,7 @@ def _write_predictions(predictions, sem_map):
 # 9. MAIN ENTRY POINT
 # ══════════════════════════════════════════════════════════════
 
-def run():
+def run(sem_week=None, semester=None):
     """
     Public entry point.
     Fires at sem_week 17 (last teaching week before endterm).
@@ -284,8 +284,9 @@ def run():
     """
     print("  [pre_end_term] Starting ...")
 
-    ctx      = _get_sim_context()
-    sem_week = ctx['sem_week']
+    ctx = _get_sim_context()
+    if sem_week is None:
+        sem_week = ctx['sem_week']
     sem_map  = ctx['sem_map']
 
     if sem_week != PRE_END_WEEK:

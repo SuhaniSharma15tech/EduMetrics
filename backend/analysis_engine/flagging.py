@@ -257,16 +257,24 @@ def _fetch_exams(sem_map, current_sem_week):
 #    Core logic is UNCHANGED — only the DB calls above changed.
 # ══════════════════════════════════════════════════════════════
 
-def generate_weekly_triage(capacity_limit=15,sem_week=None, semester=None):
+def generate_weekly_triage(capacity_limit=8,sem_week=None, semester=None):
     print("Initializing Weekly Rule-Based Triage Engine...")
-
+ 
     ctx            = _get_sim_context()
     if sem_week is None:
         sem_week = ctx['sem_week']
     rep_semester = semester if semester else next(iter(ctx['sem_map'].values()))
     sem_map        = ctx['sem_map']
-    baseline_weeks = ctx['baseline_weeks']
-    is_grace       = ctx['is_grace_period']
+    is_grace       = sem_week <= 3
+ 
+    # Recompute baseline_weeks from the actual sem_week being processed,
+    # NOT from ctx (which always reflects the live client DB week).
+    baseline_weeks = []
+    w = sem_week - 1
+    while w >= 1 and len(baseline_weeks) < 4:
+        if w not in EXAM_WEEKS:
+            baseline_weeks.append(w)
+        w -= 1
 
     rep_semester = next(iter(sem_map.values()))
 

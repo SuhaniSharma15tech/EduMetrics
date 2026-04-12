@@ -35,7 +35,7 @@ from analysis_engine.models import weekly_metrics, PreMidTerm
 # ══════════════════════════════════════════════════════════════
 
 _HERE              = os.path.dirname(os.path.abspath(__file__))
-MODEL_WEIGHTS_PATH = os.path.join(_HERE, 'model_weights.json')
+MODEL_WEIGHTS_PATH = os.path.join(_HERE,'models', 'midterm_model_weights.json')
 
 # Weeks at which this script fires (pre-midterm prediction windows)
 PRE_MID_WEEKS = {6, 7}
@@ -219,16 +219,10 @@ def _write_predictions(predictions, sem_map, current_sem_week):
 # 8. MAIN ENTRY POINT
 # ══════════════════════════════════════════════════════════════
 
-def run():
-    """
-    Public entry point.
-    Fires at sem_week 6 (first prediction pass) and sem_week 7 (final pass).
-    Writes to the dedicated pre_mid_term table.
-    """
-    print("  [pre_mid_term] Starting ...")
-
-    ctx      = _get_sim_context()
-    sem_week = ctx['sem_week']
+def run(sem_week=None, semester=None):
+    ctx = _get_sim_context()
+    if sem_week is None:
+        sem_week = ctx['sem_week']  # only falls back to DB if not passed in
     sem_map  = ctx['sem_map']
 
     if sem_week not in PRE_MID_WEEKS:

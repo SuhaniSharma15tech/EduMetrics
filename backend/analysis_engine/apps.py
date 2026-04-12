@@ -5,7 +5,6 @@ class AnalysisEngineConfig(AppConfig):
 
     def ready(self):
         from .calibrate_analysis_db import calibrate
-        calibrate()  # Calibrate on startup (can be removed later if not needed)
-        # from .scheduler import start,run_weekly
-        # run_weekly()
-        # start()
+        calibrate()  
+        from accounts.addingdata import sync
+        sync()
