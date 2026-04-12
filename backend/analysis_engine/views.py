@@ -486,13 +486,17 @@ def student_detail(request, student_id):
     curr_flag = cf_qs.order_by('-sem_week').first()
 
     # Flag history
+    # build a set of weeks where advisor was notified
+    intervened_weeks = set(
+        intervention_log.objects.filter(student_id=student_id, semester=semester_int, advisor_notified=True)
+        .values_list('sem_week', flat=True)
+    )
+
     flag_hist = [
         {
-            'week':      f['sem_week'],
-            'risk_tier': f['risk_tier'],
-            'urgency':   f['urgency_score'],
-            'diagnosis': f['diagnosis'],
-            'archetype': f['archetype'],
+            'date':       f"Week {f['sem_week']}",          # string not int
+            'diagnosis':  f['diagnosis'],
+            'intervened': f['sem_week'] in intervened_weeks, # merged from intervention_log
         }
         for f in weekly_flags.objects.filter(
             student_id=student_id, semester=semester_int
@@ -516,6 +520,12 @@ def student_detail(request, student_id):
     pmt = pre_mid_term.objects.filter(student_id=student_id, semester=semester_int).order_by('-sem_week').first()
     pet = pre_end_term.objects.filter(student_id=student_id, semester=semester_int).order_by('-sem_week').first()
     rof = risk_of_failing.objects.filter(student_id=student_id, semester=semester_int).order_by('-sem_week').first()
+
+    cls_agg = weekly_metrics.objects.filter(
+    class_id=m.class_id if m else '', semester=semester_int, sem_week=sem_week_int
+    ).aggregate(avg_et=Avg('effort_score'), avg_perf=Avg('academic_performance'))
+    class_avg_et   = _f(cls_agg['avg_et'],  65.0)
+    class_avg_perf = _f(cls_agg['avg_perf'], 70.0)
 
     return Response({
         'student_id': student_id,
@@ -555,6 +565,23 @@ def student_detail(request, student_id):
         # History
         'flag_history':         flag_hist,
         'intervention_history': int_hist,
+
+        # Aligned names (frontend expects these exact keys)
+        'avgEt':          round(sum(week_et) / max(len(week_et), 1), 1),
+        'avgAt':          round(sum(week_at) / max(len(week_at), 1), 1),
+        'overallAttend':  round(_f(m.overall_att_pct if m else None), 1),
+        'riskFail':       min(int(_f(rof.p_fail if rof else None) * 100), 100),
+        'midterm':        f"Predicted: {_f(pmt.predicted_midterm_score if pmt else None)}%" if pmt else "N/A",
+        'avgRisk':        int(curr_flag.urgency_score or 0) if curr_flag else 0,
+        'riskDetention':  min(int((curr_flag.urgency_score or 0) * 0.7), 100) if curr_flag else 0,
+        'etThisWeek':     _f(m.effort_score if m else None),
+        'perfThisWeek':   _f(m.academic_performance if m else None),
+
+        # Class averages for quad scatter
+        'classAvgEt':     class_avg_et,
+        'classAvgPerf':   class_avg_perf,
+        'studentAvgEt':   round(sum(week_et)   / max(len(week_et),   1), 1),
+        'studentAvgPerf': round(sum(week_perf) / max(len(week_perf), 1), 1),
     })
 
 
@@ -758,7 +785,7 @@ def last_week_comparison(request):
             'recovery':      max(0, 100 - risk_prev),
 
             # Intervention
-            'status':       'intervene' if curr_f else 'cleared',
+            'status':       'intervene' if curr_f else 'resolved',
             'intervention': (latest_int.notes or latest_int.trigger_diagnosis
                              if latest_int else ''),
         })
