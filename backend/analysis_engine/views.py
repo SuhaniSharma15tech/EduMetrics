@@ -441,7 +441,7 @@ def weekly_flags_view(request):
     flags = weekly_flags.objects.filter(
     class_id=class_id, semester=semester, sem_week=sem_week
     ).order_by('-urgency_score')
-
+    
     # ✅ FIX: Fetch ALL metrics in ONE query instead of one per student
     student_ids = [f.student_id for f in flags]
     metrics_map = {
@@ -457,7 +457,6 @@ def weekly_flags_view(request):
     for i, flag in enumerate(flags, start=1):
         sid = flag.student_id
         m = metrics_map.get(sid)
-        # rest of the loop stays exactly the same
 
         result[f'flag{i}'] = {
             'student_id':       sid,
@@ -465,8 +464,10 @@ def weekly_flags_view(request):
             'risk_tier':        flag.risk_tier,
             'diagnosis':        flag.diagnosis,
             'attendance_pct':   round(_f(m.overall_att_pct if m else None), 1),
-            'risk_score':       _cap(flag.urgency_score),
-            'escalation_level': flag.escalation_level,
+
+            # NOW coming from weekly_metrics
+            'risk_score':       _cap(m.risk_score if m else None),
+            'escalation_level': m.escalation_level if m else 0,
         }
 
     return Response(result)
