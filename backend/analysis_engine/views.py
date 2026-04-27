@@ -17,7 +17,7 @@
 
   INTERVENTIONS
     GET  interventions/?class_id=X&semester=Y&sem_week=Z
-    POST interventions/log/                                           (body: flag_id, intervention, timestamp)
+    POST interventions/log/                                           (body: flag_id, intervention)
 
   FLAGS
     GET  flags/weekly/?class_id=X&semester=Y&sem_week=Z
@@ -158,18 +158,17 @@ def _build_factors(diagnosis: str, urgency_score: int):
 
 
 def _get_midterm_score(student_id, semester):
-    """Return actual midterm score from ClientExamResult, or False if unavailable."""
     if not HAS_CLIENT_DB:
         return False
     try:
         schedule = ClientExamSchedule.objects.using('client_db').filter(
-            exam_type='MIDTERM', semester=semester
+            exam_type='MIDTERM'
         ).first()
         if not schedule:
             return False
         result = ClientExamResult.objects.using('client_db').filter(
             student_id=student_id,
-            exam_id=schedule.exam_id,
+            schedule_id=schedule.schedule_id,
         ).first()
         return _f(result.score_pct) if result else False
     except Exception:
@@ -177,23 +176,21 @@ def _get_midterm_score(student_id, semester):
 
 
 def _get_endterm_score(student_id, semester):
-    """Return actual endterm score from ClientExamResult, or False if unavailable."""
     if not HAS_CLIENT_DB:
         return False
     try:
         schedule = ClientExamSchedule.objects.using('client_db').filter(
-            exam_type='ENDTERM', semester=semester
+            exam_type='ENDTERM'
         ).first()
         if not schedule:
             return False
         result = ClientExamResult.objects.using('client_db').filter(
             student_id=student_id,
-            exam_id=schedule.exam_id,
+            schedule_id=schedule.schedule_id,
         ).first()
         return _f(result.score_pct) if result else False
     except Exception:
         return False
-
 
 # ─────────────────────────────────────────────────────────────────────────────
 #  1. DASHBOARD  — get_dashboard_stats  +  class_summary (AI)
@@ -370,13 +367,12 @@ def interventions_list(request):
 def log_intervention(request):
     """
     POST /api/analysis/interventions/log/
-    Body: { flag_id, intervention, timestamp }
+    Body: { flag_id, intervention}
 
     Writes into intervention_log table and returns the saved record id.
     """
     flag_id      = request.data.get('flag_id')
     intervention = request.data.get('intervention', '')
-    timestamp    = request.data.get('timestamp')
 
     if not flag_id:
         return Response({'error': 'flag_id is required'}, status=400)
@@ -391,7 +387,6 @@ def log_intervention(request):
         student_id=flag_obj.student_id,
         semester=flag_obj.semester,
         sem_week=flag_obj.sem_week,
-        escalation_level=flag_obj.escalation_level,
         notes=intervention,
         trigger_diagnosis=flag_obj.diagnosis,
         advisor_notified=True,
@@ -441,7 +436,7 @@ def weekly_flags_view(request):
     flags = weekly_flags.objects.filter(
     class_id=class_id, semester=semester, sem_week=sem_week
     ).order_by('-urgency_score')
-
+    
     # ✅ FIX: Fetch ALL metrics in ONE query instead of one per student
     student_ids = [f.student_id for f in flags]
     metrics_map = {
@@ -457,16 +452,18 @@ def weekly_flags_view(request):
     for i, flag in enumerate(flags, start=1):
         sid = flag.student_id
         m = metrics_map.get(sid)
-        # rest of the loop stays exactly the same
 
         result[f'flag{i}'] = {
+            'id':flag.id,
             'student_id':       sid,
             'student_name':     names.get(sid, sid),
             'risk_tier':        flag.risk_tier,
             'diagnosis':        flag.diagnosis,
             'attendance_pct':   round(_f(m.overall_att_pct if m else None), 1),
-            'risk_score':       _cap(flag.urgency_score),
-            'escalation_level': flag.escalation_level,
+
+            # NOW coming from weekly_metrics
+            'risk_score':       _cap(m.risk_score if m else None),
+            'escalation_level': m.escalation_level if m else 0,
         }
 
     return Response(result)
@@ -813,6 +810,7 @@ def all_students(request):
         actual_midterm_score    : { student_id: value | False },
         predicted_endterm_score : { student_id: value | False },
         actual_endterm_score    : { student_id: value | False },
+        attendance:           {student_id:value | False}
     }
     """
     params, err = _require(request, 'class_id', 'semester', 'sem_week')
@@ -822,10 +820,9 @@ def all_students(request):
     class_id = params['class_id']
     semester = int(params['semester'])
     sem_week = int(params['sem_week'])
-
     metrics_qs = list(weekly_metrics.objects.filter(
         class_id=class_id, semester=semester, sem_week=sem_week
-    ).values('student_id', 'effort_score', 'academic_performance', 'risk_score'))
+        ).values('student_id', 'effort_score', 'academic_performance', 'risk_score', 'overall_att_pct'))
 
     # Latest midterm / endterm predictions (only this semester)
     pmt_map = {}
@@ -853,6 +850,7 @@ def all_students(request):
     actual_midterm_map   = {}
     pred_endterm_map     = {}
     actual_endterm_map   = {}
+    att_map = {}
 
     # ✅ FIX: Fetch all exam scores in 2 queries total
     from .client_models import ClientExamSchedule, ClientExamResult
@@ -893,6 +891,7 @@ def all_students(request):
         pred_endterm_map[sid]   = pet_map.get(sid, False)
         actual_midterm_map[sid] = _get_midterm_score(sid, semester)
         actual_endterm_map[sid] = _get_endterm_score(sid, semester)
+        att_map[sid] = _f(m['overall_att_pct']) or False
 
     return Response({
         'student_map':              student_map,
@@ -903,15 +902,16 @@ def all_students(request):
         'actual_midterm_score':     actual_midterm_map,
         'predicted_endterm_score':  pred_endterm_map,
         'actual_endterm_score':     actual_endterm_map,
+        'overall_att_pct': att_map
     })
 
 
 @api_view(['GET'])
 def detainment_risk(request):
     """
-    GET /api/analysis/students/detainment_risk/?class_id=X&semester=Y
+    GET /api/analysis/students/detainment_risk/?class_id=X&semester=Y&sem_week=Z
 
-    Returns all students with risk_of_detention >= 85%.
+    Returns all students with risk_of_detention >= 50% for the given week.
 
     {
         student_id: {
@@ -920,18 +920,13 @@ def detainment_risk(request):
         }
     }
     """
-    params, err = _require(request, 'class_id', 'semester')
+    params, err = _require(request, 'class_id', 'semester', 'sem_week')
     if err:
         return err
 
-    class_id = params['class_id']
-    semester = int(params['semester'])
-
-    # Get the latest sem_week entry per student and filter detention >= 85
-    # Use the most recent weekly_metrics entry per student
-    latest_week = weekly_metrics.objects.filter(
-        class_id=class_id, semester=semester
-    ).aggregate(max_week=Max('sem_week'))['max_week']
+    class_id    = params['class_id']
+    semester    = int(params['semester'])
+    latest_week = int(params['sem_week'])
 
     if not latest_week:
         return Response({})
@@ -940,7 +935,7 @@ def detainment_risk(request):
         class_id=class_id,
         semester=semester,
         sem_week=latest_week,
-        risk_of_detention__gte=85,
+        risk_of_detention__gte=50,
     ).values('student_id', 'risk_of_detention', 'overall_att_pct')
 
     result = {
@@ -950,9 +945,26 @@ def detainment_risk(request):
         }
         for m in at_risk
     }
+    if result:
+        return Response(result)
+    # No one is >= 50%, so just return the single highest-risk student
+    highest = weekly_metrics.objects.filter(
+        class_id=class_id,
+        semester=semester,
+        sem_week=latest_week,
+    ).order_by('-risk_of_detention').values(
+        'student_id', 'risk_of_detention', 'overall_att_pct'
+    ).first()
 
-    return Response(result)
+    if not highest:
+        return Response({})
 
+    return Response({
+        highest['student_id']: {
+            'risk_score':     round(_f(highest['risk_of_detention']), 1),
+            'attendance_pct': round(_f(highest['overall_att_pct']), 1),
+        }
+    })
 
 # ─────────────────────────────────────────────────────────────────────────────
 #  5. EVENT REPORTS

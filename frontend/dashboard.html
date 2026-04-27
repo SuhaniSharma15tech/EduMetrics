@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>EduMetrics — Dashboard</title>
+<link rel="stylesheet" href="css/styles.css"/>
+<link rel="stylesheet" href="css/dashboard-extra.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <button class="hamburger" onclick="toggleSidebar()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
+    <div class="sidebar-logo">EduMetrics</div>
+  </div>
+  <nav class="nav">
+    <a class="nav-item active" id="nav-dashboard" onclick="showPage('dashboard')" href="#">
+      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      <span class="nav-label">Dashboard</span>
+    </a>
+    <a class="nav-item" id="nav-students" onclick="showPage('students')" href="#">
+      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      <span class="nav-label">Students</span>
+    </a>
+    <a class="nav-item" id="nav-calendar" onclick="showPage('calendar')" href="#">
+      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      <span class="nav-label">Calendar</span>
+    </a>
+    <a class="nav-item" id="nav-analytics" onclick="showPage('analytics')" href="#">
+      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>
+      <span class="nav-label">Analytics</span>
+    </a>
+  </nav>
+  <div class="sidebar-bottom">
+    <a class="nav-item logout logout-btn" href="#" onclick="logout(); return false;">
+      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      <span class="nav-label">Log Out</span>
+    </a>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<div class="main" id="main">
+
+  <header class="topbar">
+    <div class="topbar-brand">
+      <div class="topbar-title">EDUMETRICS</div>
+    </div>
+    <div class="topbar-right">
+
+      <div class="user-info">
+        <div class="user-name"><p class="advisor-name">Loading…</p><p>Teacher · CSE</p></div>
+        <div class="avatar advisor-avatar">…</div>
+      </div>
+    </div>
+  </header>
+
+  <!-- DASHBOARD PAGE -->
+  <div id="page-dashboard" class="page active">
+    <div class="sub-header">
+      <div class="sub-header-left">
+        <div class="sub-header-welcome">Welcome Back, <strong class="advisor-name">…</strong></div>
+        <div class="sub-header-badges">
+          <span class="week-badge" id="weekBadge">Week -</span>
+          <span class="sem-badge" id="semBadge">Semester 2</span>
+        </div>
+      </div>
+      <div class="week-selector">
+        <label for="weekSelect">Week:</label>
+        <div class="week-selector">
+          <select id="weekSelect" onchange="changeWeek(this.value)">
+          <!-- populated dynamically by script.js -->
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="content">
+      <div class="stat-row">
+        <div class="stat-card stat-card-blue">
+          <div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+          <div><div class="stat-label">Total Students</div><div class="stat-value">40</div></div>
+        </div>
+        <div class="stat-card stat-card-risk" id="riskScoreCard">
+          <div class="water-fill" id="waterFill"></div>
+          <div class="stat-card-inner">
+            <div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg></div>
+            <div><div class="stat-label">Avg Risk Score</div><div class="stat-value" id="riskValue">31%</div></div>
+          </div>
+        </div>
+        <div class="stat-card stat-card-red">
+          <div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
+          <div><div class="stat-label">Flagged Students This Week</div><div class="stat-value">6 <span style="font-size:14px;font-weight:500;opacity:.7">/ 40</span></div></div>
+        </div>
+        <div class="stat-card stat-card-green" onclick="openInterventionsPopup()" style="cursor:pointer">
+          <div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 12l2 2 4-4"/><path d="M21 12c0 1.2-.504 2.28-1.31 3.04L19 16l.69 1.04A9 9 0 1 1 21 12z"/></svg></div>
+          <div><div class="stat-label">Interventions Logged This Week</div><div class="stat-value">11</div></div>
+        </div>
+      </div>
+
+      <section class="summary-section">
+        <div class="summary-left">
+          <div class="section-title" style="margin-bottom:16px">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>
+            Class Performance Summary
+          </div>
+          <div class="class-summary-text">
+            <p>The class is currently averaging <strong>62.8%</strong> academically — up a modest <span class="cst-up">↑ 1.2%</span> from last week. Attendance has slipped to <strong>68.5%</strong> <span class="cst-down">(↓ 2.1%)</span>, and student engagement has been declining for <strong>three consecutive weeks</strong>.</p>
+            <p>14 out of 40 students (35%) are performing above 75%, while <span class="cst-alert">8 students (20%) remain below 50%</span> and need targeted support. <strong>Dev Malhotra</strong> leads the class at 96%. With 6 students flagged this week, prompt intervention remains critical.</p>
+          </div>
+        </div>
+        <div class="summary-right">
+          <div class="section-title" style="margin-bottom:16px">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+            Quick Actions
+          </div>
+          <div class="quick-actions-list">
+            <div class="quick-action-item qa-blue">
+              <span class="qa-color-dot qa-dot-blue"></span>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+              <span class="qa-item-text">Schedule Group Tutoring</span>
+              <span class="qa-arrow">→</span>
+            </div>
+            <div class="quick-action-item qa-amber">
+              <span class="qa-color-dot qa-dot-amber"></span>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+              <span class="qa-item-text">Send Warning Emails</span>
+              <span class="qa-arrow">→</span>
+            </div>
+            <div class="quick-action-item qa-red">
+              <span class="qa-color-dot qa-dot-red"></span>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>
+              <span class="qa-item-text">Request Counselor Review</span>
+              <span class="qa-arrow">→</span>
+            </div>
+            <div class="quick-action-item qa-green">
+              <span class="qa-color-dot qa-dot-green"></span>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              <span class="qa-item-text">Export Reports</span>
+              <span class="qa-arrow">→</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- FLAGGED STUDENTS THIS WEEK -->
+      <section>
+        <div class="section-header">
+          <div class="section-title">
+            <span class="pulse-dot"></span>
+            Flagged Students This Week
+            <span class="stag" style="background:var(--red-bg);color:var(--red);border:1px solid var(--red-border)">6 Students</span>
+          </div>
+          <div class="section-sub" id="flaggedWeekSub">Week 9 · Semester 2</div>
+        </div>
+        <div class="flagged-grid" id="flaggedGrid"></div>
+      </section>
+
+      <!-- DETAINMENT RISK + FLAGGED LAST WEEK (SIDE BY SIDE) -->
+      <div class="dashboard-side-by-side">
+        <section class="side-left">
+          <div class="section-header">
+            <div class="section-title">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><path d="M12 8v4m0 4h.01"/></svg>
+              Detainment Risk Analysis
+              <span class="stag" style="background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber-border)">Risk Score vs Attendance</span>
+            </div>
+          </div>
+          <div class="chart-card">
+            <div class="chart-body">
+              <div style="height:320px"><canvas id="riskChart"></canvas></div>
+              <div class="risk-legend">
+                <div class="risk-leg-item"><div class="risk-leg-dot" style="background:rgba(239,68,68,0.85)"></div>High Risk</div>
+                <div class="risk-leg-item"><div class="risk-leg-dot" style="background:rgba(245,158,11,0.85)"></div>Medium Risk</div>
+                <div class="risk-leg-item"><div class="risk-leg-dot" style="background:rgba(16,185,129,0.85)"></div>Safe</div>
+              </div>
+            </div>
+          </div>
+        </section>
+        <section class="side-right">
+          <div class="section-header">
+            <div class="section-title">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+              Flagged Students Last Week
+              <span class="stag" style="background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber-border)">Review</span>
+            </div>
+          </div>
+          <div class="lw-scroll-frame">
+            <div class="lw-flag-grid" id="lastWeekGrid"></div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <!-- STUDENTS PAGE -->
+  <div id="page-students" class="page">
+    <div class="sub-header">
+      <div class="sub-header-left">
+        <div class="page-header-title">Student Management</div>
+        <div class="page-header-sub">View and manage all students in your class</div>
+      </div>
+    </div>
+    <div class="stu-page-content">
+      <div class="toggle-group" id="stuToggleGroup">
+        <button class="tgl-btn active" onclick="setStuView('academicPerf')">Academic Performance</button>
+        <button class="tgl-btn" onclick="setStuView('riskScore')">Risk Score</button>
+        <button class="tgl-btn" onclick="setStuView('effort')">Effort</button>
+        <button class="tgl-btn" onclick="setStuView('predMidterm')">Pred. Mid Term</button>
+        <button class="tgl-btn" onclick="setStuView('predEndterm')">Pred. End Term</button>
+        <button class="tgl-btn" onclick="setStuView('attendance')">Attendance</button>
+      </div>
+      <div id="stuViewContainer" style="margin-top:16px"></div>
+    </div>
+  </div>
+
+  <!-- CALENDAR PAGE -->
+  <div id="page-calendar" class="page">
+    <div class="cal-layout">
+      <div class="cal-left">
+        <div class="cal-left-header">
+          <div class="cal-left-title">Add to your schedule</div>
+          <div class="cal-left-sub">Plan your day</div>
+          <input type="text" class="todo-input" id="schedTaskName" placeholder="What do you need to do?" style="margin-bottom:8px;width:100%"/>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+            <select class="todo-input" id="schedDay">
+              <option value="0">Mon 7</option><option value="1">Tue 8</option><option value="2">Wed 9</option>
+              <option value="3">Thu 10</option><option value="4">Fri 11</option><option value="5">Sat 12</option>
+            </select>
+            <select class="todo-input" id="schedTime">
+              <option value="8">8:00</option><option value="9">9:00</option><option value="10">10:00</option>
+              <option value="11">11:00</option><option value="12">12:00</option><option value="13">13:00</option>
+              <option value="14">14:00</option><option value="15">15:00</option><option value="16">16:00</option>
+            </select>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+            <select class="todo-input" id="schedDuration">
+              <option value="1">1 hour</option><option value="2">2 hours</option><option value="3">3 hours</option>
+            </select>
+            <select class="todo-input" id="schedCategory">
+              <option value="Academic">Academic</option><option value="Meeting">Meeting</option>
+              <option value="Urgent">Urgent</option><option value="Email">Email</option>
+            </select>
+          </div>
+          <button class="todo-add-btn" style="width:100%" onclick="addScheduleTask()">Add to schedule</button>
+        </div>
+        <div class="todo-list" id="schedTaskList">
+          <div class="todo-group-label">YOUR TASKS THIS WEEK</div>
+          <div id="schedTaskItems"></div>
+        </div>
+      </div>
+      <div class="cal-right">
+        <div class="cal-right-header">
+          <div class="cal-month">April 2026</div>
+          <div class="cal-nav">
+            <button class="cal-nav-btn" onclick="calToday()">Today</button>
+          </div>
+        </div>
+        <div class="cal-grid" id="calGrid"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ANALYTICS PAGE -->
+  <div id="page-analytics" class="page">
+    <div class="sub-header">
+      <div class="sub-header-left">
+        <div class="page-header-title" style="display:flex;align-items:center;gap:16px">Analytics
+          <div class="analytics-top-toggle" style="margin:0">
+            <button class="atop-btn active" id="atop-midterm" onclick="setAnalyticsMain('midterm')">Midterm</button>
+            <button class="atop-btn" id="atop-endterm" onclick="setAnalyticsMain('endterm')">End Term</button>
+          </div>
+        </div>
+        <div class="page-header-sub">Pre & Post exam performance analysis — Midterm & End Term</div>
+      </div>
+    </div>
+    <div id="anlNoData" style="display:none;align-items:center;justify-content:center;padding:80px 20px;color:var(--txt3);font-size:14px;font-weight:600;text-align:center;flex-direction:column;gap:12px">
+      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="opacity:0.4"><circle cx="12" cy="12" r="10"/><path d="M12 8v4m0 4h.01"/></svg>
+      <span></span>
+    </div>
+    <div class="analytics-content">
+
+      <!-- ── MIDTERM SECTION ── -->
+      <div id="anl-main-midterm" class="analytics-main-section active">
+        <div class="anl-section-header">
+          <div>
+            <div class="anl-section-title">Midterm Analytics</div>
+            <div class="anl-section-desc">Pre &amp; Post Midterm performance breakdown</div>
+          </div>
+          <div class="anl-tab-group">
+            <button class="anl-tab active" id="atgl-pre" onclick="setMidtermView('pre')">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="4" height="18" rx="1"/><rect x="10" y="8" width="4" height="13" rx="1"/><rect x="18" y="5" width="4" height="16" rx="1"/></svg>
+              Pre-Midterm
+            </button>
+            <button class="anl-tab" id="atgl-post" onclick="setMidtermView('post')">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+              Post-Midterm
+            </button>
+          </div>
+        </div>
+
+        <!-- PRE MID-TERM -->
+        <div id="anl-pre" class="analytics-sub-section active">
+          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:4px">
+            <div class="anl-q-heading" style="margin:0">How is the class predicted to score?</div>
+            <span id="anlPreMidPublishedBadge" style="display:none;background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber-border);border-radius:20px;font-size:10px;font-weight:700;padding:3px 10px;letter-spacing:0.04em"></span>
+          </div>
+          <div class="anl-q-sub">Predicted score distribution before the midterm exam</div>
+
+          <div class="anl-hero-layout">
+            <div class="anl-hero-chart-card">
+              <div class="anl-panel-title">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="4" height="18" rx="1"/><rect x="10" y="8" width="4" height="13" rx="1"/><rect x="18" y="5" width="4" height="16" rx="1"/></svg>
+                Predicted Marks Distribution
+              </div>
+              <div style="height:260px"><canvas id="preDistChart"></canvas></div>
+            </div>
+            <div class="anl-hero-stats" id="preMidtermStatsSummary">
+              <div class="anl-big-stat-card">
+                <div class="anl-big-stat-label">MEAN PREDICTED SCORE</div>
+                <div class="anl-big-stat-val" style="color:var(--accent2)">—</div>
+              </div>
+              <div class="anl-big-stat-card">
+                <div class="anl-big-stat-label">STD DEVIATION</div>
+                <div class="anl-big-stat-val" style="color:var(--purple)">—</div>
+              </div>
+              <div class="anl-big-stat-card">
+                <div class="anl-big-stat-label">MODE (MOST LIKELY SCORE)</div>
+                <div class="anl-big-stat-val" style="color:var(--green)">—</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="anl-percentile-row">
+            <div class="anl-percentile-card anl-percentile-bottom">
+              <div class="anl-pct-title">Bottom 20% of the Class</div>
+              <div class="anl-pct-sub">How bad are our worst students?</div>
+              <div class="anl-pct-range anl-pct-range-red" id="preMidBot">—</div>
+              <div class="anl-pct-desc">Predicted score range (8 students)</div>
+            </div>
+            <div class="anl-percentile-card anl-percentile-top">
+              <div class="anl-pct-title">Top 20% of the Class</div>
+              <div class="anl-pct-sub">How good are our best students?</div>
+              <div class="anl-pct-range anl-pct-range-green" id="preMidTop">—</div>
+              <div class="anl-pct-desc">Predicted score range (8 students)</div>
+            </div>
+          </div>
+
+          <div class="anl-watchlist-card">
+            <div class="anl-watchlist-title">
+              <span>⚠️</span>
+              <span style="color:var(--red)">Students to Watch Out for Before Midterm</span>
+            </div>
+            <table class="anl-watchlist-table">
+              <thead>
+                <tr>
+                  <th>STUDENT NAME</th><th>ID</th><th>PREDICTED SCORE</th><th>RISK LEVEL</th>
+                </tr>
+              </thead>
+              <tbody id="preMidtermWatchlist"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- POST MID-TERM -->
+        <div id="anl-post" class="analytics-sub-section">
+          <div class="anl-q-heading">How did the class actually score?</div>
+          <div class="anl-q-sub">Actual midterm score distribution vs predictions</div>
+
+          <div class="anl-hero-layout">
+            <div class="anl-hero-chart-card">
+              <div class="anl-panel-title">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="4" height="18" rx="1"/><rect x="10" y="8" width="4" height="13" rx="1"/><rect x="18" y="5" width="4" height="16" rx="1"/></svg>
+                Actual Marks Distribution
+              </div>
+              <div style="height:260px"><canvas id="postDistChart"></canvas></div>
+            </div>
+            <div class="anl-hero-stats" id="postMidtermStatsSummary">
+              <div class="anl-big-stat-card">
+                <div class="anl-big-stat-label">MEAN OF MIDTERM SCORE</div>
+                <div class="anl-big-stat-val" style="color:var(--accent2)">—</div>
+              </div>
+              <div class="anl-big-stat-card">
+                <div class="anl-big-stat-label">STD DEVIATION</div>
+                <div class="anl-big-stat-val" style="color:var(--purple)">—</div>
+              </div>
+              <div class="anl-big-stat-card">
+                <div class="anl-big-stat-label">MODE (MOST SCORED)</div>
+                <div class="anl-big-stat-val" style="color:var(--green)">—</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="anl-percentile-row">
+            <div class="anl-percentile-card anl-percentile-bottom">
+              <div class="anl-pct-title">Bottom 20% of the Class</div>
+              <div class="anl-pct-sub">How bad are our worst students?</div>
+              <div class="anl-pct-range anl-pct-range-red" id="postMidBot">-</div>
+              <div class="anl-pct-desc">Actual score range (8 students)</div>
+            </div>
+            <div class="anl-percentile-card anl-percentile-top">
+              <div class="anl-pct-title">Top 20% of the Class</div>
+              <div class="anl-pct-sub">How good are our best students?</div>
+              <div class="anl-pct-range anl-pct-range-green" id="postMidTop">-</div>
+              <div class="anl-pct-desc">Actual score range (8 students)</div>
+            </div>
+          </div>
+
+          <div class="anl-watchlist-card">
+            <div class="anl-watchlist-title">
+              <span>📉</span>
+              <span style="color:var(--red)">Students Who Severely Underperformed Expectations</span>
+            </div>
+            <div class="anl-gap-cards" id="postMidtermUnder"></div>
+          </div>
+          <div class="anl-watchlist-card">
+            <div class="anl-watchlist-title">
+              <span>📈</span>
+              <span style="color:var(--green)">Students Who  Outperformed Expectations</span>
+            </div>
+            <div class="anl-gap-cards" id="postMidtermOver"></div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ── END TERM SECTION ── -->
+      <div id="anl-main-endterm" class="analytics-main-section">
+        <div class="anl-section-header">
+          <div>
+            <div class="anl-section-title">End Term Analytics</div>
+            <div class="anl-section-desc">Pre &amp; Post End Term performance breakdown</div>
+          </div>
+          <div class="anl-tab-group">
+            <button class="anl-tab active" id="atgl-pre-end" onclick="setEndtermView('pre')">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="4" height="18" rx="1"/><rect x="10" y="8" width="4" height="13" rx="1"/><rect x="18" y="5" width="4" height="16" rx="1"/></svg>
+              Pre-End Term
+            </button>
+            <button class="anl-tab" id="atgl-post-end" onclick="setEndtermView('post')">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+              Post-End Term
+            </button>
+          </div>
+        </div>
+
+        <!-- PRE END-TERM -->
+        <div id="anl-pre-end" class="analytics-sub-section active">
+          <div class="anl-q-heading">How is the class predicted to score in finals?</div>
+          <div class="anl-q-sub">Predicted end term score distribution and full-semester trajectory (Weeks 1–12)</div>
+
+          <div class="anl-hero-layout">
+            <div class="anl-hero-chart-card">
+              <div class="anl-panel-title">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="4" height="18" rx="1"/><rect x="10" y="8" width="4" height="13" rx="1"/><rect x="18" y="5" width="4" height="16" rx="1"/></svg>
+                Predicted End Term Distribution
+              </div>
+              <div style="height:260px"><canvas id="preEndChart"></canvas></div>
+            </div>
+            <div class="anl-hero-stats" id="preEndtermStatsSummary">
+              <div class="anl-big-stat-card">
+                <div class="anl-big-stat-label">MEAN PREDICTED SCORE</div>
+                <div class="anl-big-stat-val" style="color:var(--accent2)">—</div>
+              </div>
+              <div class="anl-big-stat-card">
+                <div class="anl-big-stat-label">STD DEVIATION</div>
+                <div class="anl-big-stat-val" style="color:var(--purple)">—</div>
+              </div>
+              <div class="anl-big-stat-card">
+                <div class="anl-big-stat-label">MODE (MOST LIKELY SCORE)</div>
+                <div class="anl-big-stat-val" style="color:var(--green)">—</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="anl-percentile-row">
+            <div class="anl-percentile-card anl-percentile-bottom">
+              <div class="anl-pct-title">Bottom 20% of the Class</div>
+              <div class="anl-pct-sub">How bad are our worst students?</div>
+              <div class="anl-pct-range anl-pct-range-red" id="preEndBot">—</div>
+              <div class="anl-pct-desc">Predicted score range (8 students)</div>
+            </div>
+            <div class="anl-percentile-card anl-percentile-top">
+              <div class="anl-pct-title">Top 20% of the Class</div>
+              <div class="anl-pct-sub">How good are our best students?</div>
+              <div class="anl-pct-range anl-pct-range-green" id="preEndTop">—</div>
+              <div class="anl-pct-desc">Predicted score range (8 students)</div>
+            </div>
+          </div>
+
+          <div class="anl-endterm-side-by-side">
+            <div class="anl-watchlist-card" style="margin-bottom:0">
+              <div class="anl-watchlist-title">
+                <span>⚠️</span>
+                <span style="color:var(--red)">Students to Watch Out for Before End Term</span>
+              </div>
+              <table class="anl-watchlist-table">
+                <thead>
+                  <tr><th>STUDENT NAME</th><th>ID</th><th>PREDICTED SCORE</th><th>RISK LEVEL</th></tr>
+                </thead>
+                <tbody id="preEndtermWatchlist"></tbody>
+              </table>
+            </div>
+        </div>
+        </div><!-- /anl-pre-end -->
+
+        <!-- POST END-TERM -->
+        <div id="anl-post-end" class="analytics-sub-section">
+          <div class="anl-q-heading">How did the class score in finals?</div>
+          <div class="anl-q-sub">Actual vs predicted distribution and subject-level performance analysis</div>
+
+          <div class="anl-hero-layout">
+            <div class="anl-hero-chart-card">
+              <div class="anl-panel-title">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="4" height="18" rx="1"/><rect x="10" y="8" width="4" height="13" rx="1"/><rect x="18" y="5" width="4" height="16" rx="1"/></svg>
+                Actual vs Predicted End Term Distribution
+              </div>
+              <div style="height:260px"><canvas id="postEndChart"></canvas></div>
+            </div>
+            <div class="anl-hero-stats" id="postEndtermStatsSummary">
+              <div class="anl-big-stat-card">
+                <div class="anl-big-stat-label">MEAN OF ENDTERM SCORE</div>
+                <div class="anl-big-stat-val" style="color:var(--accent2)">—</div>
+              </div>
+              <div class="anl-big-stat-card">
+                <div class="anl-big-stat-label">STD DEVIATION</div>
+                <div class="anl-big-stat-val" style="color:var(--purple)">—</div>
+              </div>
+              <div class="anl-big-stat-card">
+                <div class="anl-big-stat-label">MODE (MOST SCORED)</div>
+                <div class="anl-big-stat-val" style="color:var(--green)">—</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="anl-percentile-row">
+            <div class="anl-percentile-card anl-percentile-bottom">
+              <div class="anl-pct-title">Bottom 20% of the Class</div>
+              <div class="anl-pct-sub">Actual worst performers</div>
+              <div class="anl-pct-range anl-pct-range-red" id="postEndBot">-</div>
+              <div class="anl-pct-desc">Actual score range (8 students)</div>
+            </div>
+            <div class="anl-percentile-card anl-percentile-top">
+              <div class="anl-pct-title">Top 20% of the Class</div>
+              <div class="anl-pct-sub">Actual best performers</div>
+              <div class="anl-pct-range anl-pct-range-green" id="postEndTop">-</div>
+              <div class="anl-pct-desc">Actual score range (8 students)</div>
+            </div>
+          </div>
+
+          <div class="anl-watchlist-card">
+            <div class="anl-watchlist-title">
+              <span>📉</span>
+              <span style="color:var(--red)">Students Who Severely Underperformed Expectations</span>
+            </div>
+            <div class="anl-gap-cards" id="postEndtermUnder"></div>
+          </div>
+          <div class="anl-watchlist-card">
+            <div class="anl-watchlist-title">
+              <span>📈</span>
+              <span style="color:var(--green)">Students Who  Outperformed Expectations</span>
+            </div>
+            <div class="anl-gap-cards" id="postEndtermOver"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- FLAGGED DETAIL OVERLAY -->
+<div class="overlay" id="overlay" onclick="handleOvClick(event)">
+  <div class="detail-modal">
+    <button class="dm-close" onclick="closeOverlay()">✕</button>
+    <div class="dm-header">
+      <div class="dm-av" id="dmAv"></div>
+      <div><div class="dm-title" id="dmTitle"></div><div class="dm-sub" id="dmSub"></div></div>
+      <span id="dmRiskPill"></span>
+    </div>
+    <div class="dm-scroll">
+      <div class="dm-panel dm-summary-panel" id="dmSummaryPanel">
+        <div class="dm-section-label">STUDENT SUMMARY</div>
+        <div class="dm-summary-text" id="dmSummaryText"></div>
+      </div>
+      <div class="dm-two-col">
+        <div class="dm-panel"><div class="dm-section-label">STUDENT OVERVIEW</div><div id="dmStats"></div></div>
+        <div class="dm-panel">
+          <div class="dm-section-label">FLAGGING HISTORY</div>
+          <div class="fh-summary" id="dmFhSummary"></div>
+          <table class="fh-table"><thead><tr><th>FLAG DATE</th><th>DIAGNOSIS</th><th>INTERVENED?</th></tr></thead><tbody id="dmFhBody"></tbody></table>
+        </div>
+      </div>
+      <div class="dm-two-col">
+        <div class="dm-panel">
+          <div class="dm-section-label">Effort &amp; Academic Performance over Weeks</div>
+          <div class="dm-chart-sub">Tracking engagement and academic scores across the semester</div>
+          <div style="height:260px"><canvas id="dmLineChart"></canvas></div>
+          <div class="dm-chart-legend">
+            <span class="dm-leg"><span class="dm-leg-line" style="background:#60a5fa"></span>Effort</span>
+            <span class="dm-leg"><span class="dm-leg-dot" style="background:#f59e0b"></span>Academic Performance</span>
+          </div>
+        </div>
+        <div class="dm-panel">
+          <div class="dm-section-label">Academic Performance vs Effort</div>
+          <div class="dm-chart-sub">Student position vs class average this week and overall</div>
+          <div style="height:260px"><canvas id="dmQuadChart"></canvas></div>
+          <div class="dm-chart-legend">
+            <span class="dm-leg"><span class="dm-leg-dot" style="background:#f59e0b"></span>This Week</span>
+            <span class="dm-leg"><span class="dm-leg-dot" style="background:#60a5fa"></span>Avg</span>
+          </div>
+        </div>
+      </div>
+      <div class="dm-panel">
+        <div class="dm-section-label">Reason for Flagging</div>
+        <div id="dmFactors"></div>
+        <div class="dm-major" id="dmMajorNote"></div>
+      </div>
+      <div class="dm-bottom-row">
+        <div class="dm-bottom-item">
+          <div class="dm-bottom-label">Risk of Failing</div>
+          <div class="dm-bottom-bar-wrap"><div class="dm-bottom-bar" id="dmRiskBar"></div></div>
+          <div class="dm-bottom-val" id="dmRiskVal"></div>
+        </div>
+        <div class="dm-bottom-item">
+          <div class="dm-bottom-label">Recovery Chance</div>
+          <div class="dm-bottom-bar-wrap"><div class="dm-bottom-bar" id="dmRecBar"></div></div>
+          <div class="dm-bottom-val" id="dmRecVal"></div>
+        </div>
+      </div>
+      <div class="dm-actions">
+        <button class="dm-action-btn primary" id="logInterventionBtn" onclick="logIntervention()">✓ Log Intervention</button>
+        <button class="dm-action-btn" onclick="mailStudent()">📧 Email Student</button>
+        <button class="dm-action-btn" onclick="mailParents()">📧 Email Parents</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- LAST WEEK DETAIL OVERLAY -->
+<div class="overlay" id="lwOverlay" onclick="handleLwOvClick(event)">
+  <div class="detail-modal">
+    <button class="dm-close" onclick="closeLwOverlay()">✕</button>
+    <div class="dm-header">
+      <div class="dm-av" id="lwDmAv"></div>
+      <div><div class="dm-title" id="lwDmTitle"></div><div class="dm-sub" id="lwDmSub"></div></div>
+      <span id="lwDmRisk"></span>
+    </div>
+    <div class="dm-scroll" id="lwDmBody"></div>
+  </div>
+</div>
+
+<!-- INTERVENTIONS POPUP -->
+<div class="overlay" id="interventionsOverlay" onclick="handleIntOvClick(event)">
+  <div class="detail-modal" style="max-width:700px">
+    <button class="dm-close" onclick="closeInterventionsPopup()">✕</button>
+    <div class="dm-header">
+      <div class="dm-av" style="background:var(--green-bg);color:var(--green)">✓</div>
+      <div><div class="dm-title">Interventions Logged This Week</div><div class="dm-sub">Week 9 · Semester 2</div></div>
+    </div>
+    <div class="dm-scroll" id="interventionsBody"></div>
+  </div>
+</div>
+
+<!-- STUDENT DETAIL POPUP -->
+<div class="overlay" id="stuDetailOverlay" onclick="handleStuDetailOvClick(event)">
+  <div class="detail-modal" style="max-width:960px">
+    <button class="dm-close" onclick="closeStuDetailOverlay()">✕</button>
+    <div class="dm-header">
+      <div class="dm-av" id="stuDetAv"></div>
+      <div><div class="dm-title" id="stuDetTitle"></div><div class="dm-sub" id="stuDetSub"></div></div>
+      <span id="stuDetRiskPill"></span>
+    </div>
+    <div class="dm-scroll">
+      <div class="dm-panel dm-summary-panel" id="stuDetSummaryPanel">
+        <div class="dm-section-label">STUDENT SUMMARY</div>
+        <div class="dm-summary-text" id="stuDetSummaryText"></div>
+      </div>
+      <div class="dm-two-col">
+        <div class="dm-panel"><div class="dm-section-label">STUDENT OVERVIEW</div><div id="stuDetStats"></div></div>
+        <div class="dm-panel">
+          <div class="dm-section-label">FLAGGING HISTORY</div>
+          <div class="fh-summary" id="stuDetFhSummary"></div>
+          <table class="fh-table"><thead><tr><th>FLAG DATE</th><th>DIAGNOSIS</th><th>INTERVENED?</th></tr></thead><tbody id="stuDetFhBody"></tbody></table>
+        </div>
+      </div>
+      <div class="dm-two-col">
+        <div class="dm-panel">
+          <div class="dm-section-label">Effort &amp; Academic Performance over Weeks</div>
+          <div class="dm-chart-sub">Tracking engagement and academic scores across the semester</div>
+          <div style="height:260px"><canvas id="stuDetLineChart"></canvas></div>
+          <div class="dm-chart-legend">
+            <span class="dm-leg"><span class="dm-leg-line" style="background:#60a5fa"></span>Effort</span>
+            <span class="dm-leg"><span class="dm-leg-dot" style="background:#f59e0b"></span>Academic Performance</span>
+          </div>
+        </div>
+        <div class="dm-panel">
+          <div class="dm-section-label">Academic Performance vs Effort</div>
+          <div class="dm-chart-sub">Student position vs class average this week and overall</div>
+          <div style="height:260px"><canvas id="stuDetQuadChart"></canvas></div>
+          <div class="dm-chart-legend">
+            <span class="dm-leg"><span class="dm-leg-dot" style="background:#f59e0b"></span>This Week</span>
+            <span class="dm-leg"><span class="dm-leg-dot" style="background:#60a5fa"></span>Avg</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- INTERVENTION LOGGER POPUP (nested, overlaps detail modal) -->
+<div class="int-popup-overlay" id="interventionPopup">
+  <div class="int-popup-modal">
+    <div class="int-popup-header">
+      <div class="int-popup-title-row">
+        <div>
+          <div class="int-popup-title">Log Intervention</div>
+          <div class="int-popup-sub">For <span id="intPopupStudentName"></span></div>
+        </div>
+        <span id="intPopupRiskPill"></span>
+      </div>
+    </div>
+    <div class="int-popup-body">
+      <div class="int-popup-section-label">SUGGESTED INTERVENTIONS</div>
+      <div class="int-popup-section-hint">Select one or more actions to log</div>
+      <div id="intSuggestionsList" class="int-suggestions-list"></div>
+      <div class="int-popup-section-label" style="margin-top:20px">WRITE INTERVENTION NOTE</div>
+      <textarea id="intWriteBox" class="int-write-box" placeholder="Describe the intervention taken or planned…" rows="4"></textarea>
+    </div>
+    <div class="int-popup-footer">
+      <button class="int-btn-lock" onclick="lockIntervention()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        Lock Intervention
+      </button>
+      <button class="int-btn-cancel" onclick="closeInterventionPopup()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script src="js/api.js"></script>
+<script src="js/charts.js"></script>
+<script src="js/script.js"></script>
+</body>
+</html>

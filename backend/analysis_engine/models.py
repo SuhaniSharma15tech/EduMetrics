@@ -70,7 +70,8 @@ class weekly_metrics(models.Model):
 
     # risk score 
     risk_score = models.IntegerField(null=True, blank=True, default=None)
-    
+    # escalation level is not written by any script
+    escalation_level=models.IntegerField(default=0)
     class Meta:
         db_table = 'weekly_metrics'
         constraints = [
@@ -204,7 +205,9 @@ class weekly_flags(models.Model):
 
     risk_tier        = models.CharField(max_length=40)
     urgency_score    = models.IntegerField()
-    escalation_level = models.IntegerField(default=0)
+    # change from  v1
+    # removing escalation level from weekly_flags
+    # escalation_level = models.IntegerField(default=0)
     diagnosis        = models.TextField()
 
     helpful          = models.BooleanField(null=True, default=None)
@@ -241,6 +244,7 @@ WeeklyFlags = weekly_flags
 #    'notes' is the canonical advisor column per the SQL schema.
 #    'trigger_diagnosis' / 'advisor_notified' kept as legacy
 #    nullable extras so existing bulk_create calls don't break.
+# change from v1: now this table gets updated by frontend only
 # ============================================================
 class intervention_log(models.Model):
     id               = models.BigAutoField(primary_key=True)
@@ -255,8 +259,6 @@ class intervention_log(models.Model):
     semester         = models.IntegerField()
     sem_week         = models.IntegerField()
     logged_at        = models.DateTimeField(auto_now_add=True)
-
-    escalation_level  = models.IntegerField(default=1)
     notes             = models.TextField(blank=True, default='')
 
     # legacy fields kept nullable
@@ -274,7 +276,6 @@ class intervention_log(models.Model):
         return (
             f"InterventionLog for {self.student_id} | "
             f"sem={self.semester} week={self.sem_week} "
-            f"level={self.escalation_level}"
         )
 
 InterventionLog = intervention_log

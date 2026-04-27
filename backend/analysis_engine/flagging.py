@@ -97,54 +97,46 @@ def _get_sim_context():
 # 2. ESCALATION MEMORY — replaces _load_memory() / _save_memory()
 # ══════════════════════════════════════════════════════════════
 
-def _load_memory():
+
+def _load_memory(semester):
     """
-    Read latest escalation state per student from v_current_escalation.
-    We replicate the view logic in Python using InterventionLog.
-    Returns { student_id → {'escalation_level': int, 'last_flagged_week': int} }
+    Reads latest escalation state per student from weekly_metrics.
+    Returns:
+    { student_id: {'escalation_level': int, 'last_flagged_week': int} }
     """
-    # Get the latest intervention_log row per student (equivalent to the view)
+
     from django.db.models import Max
-    latest_per_student = (
-        InterventionLog.objects
+    from analysis_engine.models import weekly_metrics
+
+    # Step 1: latest week per student
+    latest_weeks = (
+        weekly_metrics.objects
+        .filter(semester=semester)
         .values('student_id')
-        .annotate(latest=Max('logged_at'))
+        .annotate(latest_week=Max('sem_week'))
     )
 
     memory = {}
-    for entry in latest_per_student:
-        row = (
-            InterventionLog.objects
-            .filter(student_id=entry['student_id'], logged_at=entry['latest'])
+
+    for row in latest_weeks:
+        wm = (
+            weekly_metrics.objects
+            .filter(
+                student_id=row['student_id'],
+                semester=semester,
+                sem_week=row['latest_week']
+            )
+            .only('student_id', 'escalation_level', 'sem_week')
             .first()
         )
-        if row:
-            memory[row.student_id] = {
-                'escalation_level':  row.escalation_level,
-                'last_flagged_week': row.sem_week,
+
+        if wm:
+            memory[wm.student_id] = {
+                'escalation_level': wm.escalation_level,
+                'last_flagged_week': wm.sem_week,
             }
+
     return memory
-
-
-def _save_memory(new_memory, sem_week, semester):
-    """
-    Write escalation changes to InterventionLog.
-    new_memory: { student_id → {'escalation_level': int, 'diagnosis': str} }
-    """
-    if not new_memory:
-        return
-
-    logs = [
-        InterventionLog(
-            student_id        = sid,
-            semester          = semester,
-            sem_week          = sem_week,
-            escalation_level  = data['escalation_level'],
-            notes             = data.get('diagnosis', ''),   # canonical SQL field
-        )
-        for sid, data in new_memory.items()
-    ]
-    InterventionLog.objects.bulk_create(logs, ignore_conflicts=True)
 
 
 # ══════════════════════════════════════════════════════════════
@@ -299,7 +291,7 @@ def generate_weekly_triage(capacity_limit=8,sem_week=None, semester=None):
     exam_rows = _fetch_exams(sem_map, sem_week)
 
     # ── Load escalation memory ────────────────────────────────
-    memory = _load_memory()
+    memory = _load_memory(rep_semester)
 
     # ── Pre-aggregate attendance ──────────────────────────────
     def _att_rate(rows, weeks):
@@ -363,20 +355,21 @@ def generate_weekly_triage(capacity_limit=8,sem_week=None, semester=None):
 
     # ── Triage loop ───────────────────────────────────────────
     interventions  = []
-    new_memory     = {}
     risk_score_map = {}   # { student_id → raw risk score (pre-escalation) }
-
+    escalation_level_map={}
+    
     for stu in students:
         sid  = stu['student_id']
         name = stu['name']
         cid  = stu['class_id']
-
+    
         score     = 0
         diagnoses = []
 
         hist = memory.get(sid, {'escalation_level': 0, 'last_flagged_week': None})
         escalation_level  = hist['escalation_level']
         last_flagged_week = hist['last_flagged_week']
+        already_this_week = (last_flagged_week == sem_week)
 
         # Plagiarism
         plag = now_assn.get(sid, {}).get('max_plag', 0)
@@ -424,8 +417,7 @@ def generate_weekly_triage(capacity_limit=8,sem_week=None, semester=None):
         if score > 0:
             severity_multiplier   = 1.0 + ((len(diagnoses) - 1) * 0.5)
             compounded_score      = score * severity_multiplier
-            already_this_week     = (last_flagged_week == sem_week)
-            if not already_this_week and escalation_level > 0:
+            if escalation_level > 0:
                 final_urgency = compounded_score + (escalation_level * 15)
             else:
                 final_urgency = compounded_score
@@ -434,25 +426,32 @@ def generate_weekly_triage(capacity_limit=8,sem_week=None, semester=None):
             elif final_urgency >= 80:  risk_tier = 'Tier 2 (High Risk)'
             else:                      risk_tier = 'Tier 3 (Warning)'
 
-
             interventions.append({
                 'student_id':       sid,
                 'name':             name,
                 'class_id':         cid,
                 'risk_tier':        risk_tier,
                 'urgency_score':    int(final_urgency),
-                'escalation_level': escalation_level,
                 'diagnosis':        ' | '.join(diagnoses),
             })
 
-            new_escl = escalation_level if already_this_week else escalation_level + 1
-            new_memory[sid] = {
-                'escalation_level': new_escl,
-                'diagnosis':        ' | '.join(diagnoses),
-            }
+
+            # increaseing escalation_level
+        
+            TIER2_THRESHOLD = 80
+            if final_urgency >= TIER2_THRESHOLD:
+                # Tier 2 or Tier 1 → escalate streak
+                new_escalation = escalation_level if already_this_week else escalation_level + 1
+            elif final_urgency > 0:
+                # Tier 3 (Warning) → break streak
+                new_escalation = 0
+            else:
+                # No risk → reset
+                new_escalation = 0
+            escalation_level_map[sid]=new_escalation
         else:
-            if sid in memory:
-                new_memory[sid] = {'escalation_level': 0, 'diagnosis': 'cleared'}
+            escalation_level_map[sid] = 0
+            
 
     # ── Rank and cap per class ────────────────────────────────
     by_class = {}
@@ -474,7 +473,6 @@ def generate_weekly_triage(capacity_limit=8,sem_week=None, semester=None):
                 sem_week        = sem_week,
                 risk_tier       = row['risk_tier'],
                 urgency_score   = row['urgency_score'],
-                escalation_level= row['escalation_level'],
                 diagnosis       = row['diagnosis'],
             )
             for row in top_interventions
@@ -491,14 +489,12 @@ def generate_weekly_triage(capacity_limit=8,sem_week=None, semester=None):
     else:
         print("  Great news: Zero interventions required this week.")
 
-    # ── Persist escalation memory ─────────────────────────────
-    _save_memory(new_memory, sem_week, rep_semester)
-    print(f"  Escalation memory updated — {len(new_memory)} student(s) logged "
-          f"→ intervention_log")
+    
 
+    
     # ── Write risk_score back into weekly_metrics ─────────────
     # Fetch all weekly_metrics rows for this (semester, sem_week) that belong
-    # to students we just scored, then bulk-update risk_score in one query.
+    # to students we just scored, then bulk-update risk_score,escalation_level in one query.
     if risk_score_map:
         wm_qs = weekly_metrics.objects.filter(
             semester=rep_semester,
@@ -509,16 +505,22 @@ def generate_weekly_triage(capacity_limit=8,sem_week=None, semester=None):
         rows_to_update = []
         for wm in wm_qs:
             new_score = risk_score_map.get(wm.student_id)
+            new_escalation = escalation_level_map.get(wm.student_id)
             if new_score is not None:
                 wm.risk_score = new_score
                 rows_to_update.append(wm)
+            if new_escalation is not None:
+                wm.escalation_level = new_escalation
 
         if rows_to_update:
-            weekly_metrics.objects.bulk_update(rows_to_update, ['risk_score'])
-            print(f"  risk_score written → weekly_metrics "
-                  f"({len(rows_to_update)} row(s), sem {rep_semester}, week {sem_week})")
+            weekly_metrics.objects.bulk_update(
+                rows_to_update,
+                ['risk_score', 'escalation_level']
+            )
+            print(f"  risk_score + escalation_level written → weekly_metrics "
+              f"({len(rows_to_update)} row(s), sem {rep_semester}, week {sem_week})")
         else:
-            print("  risk_score: no matching weekly_metrics rows found for this week.")
+            print("  No matching weekly_metrics rows found for this week.")
 
 
 # ── Standalone entry point ────────────────────────────────────
@@ -528,3 +530,13 @@ if __name__ == '__main__':
     os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'your_project.settings')
     django.setup()
     generate_weekly_triage()
+
+
+'''this is how it can all work:
+- read att data, assignments data, exams data of each student
+- calculate risk score
+- number of flags before this week (escalation level) elevate urgency score
+- pick top 8 urgent cases
+-write risk scores back in weekly_metrices for frontend
+- write escalation level back in db(obv u can use group queries to find the count of all flags for a student this sem for frontend but let's minimise 'on the fly stuff')
+'''

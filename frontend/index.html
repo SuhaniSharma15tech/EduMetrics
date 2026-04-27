@@ -1,0 +1,1885 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>EduMetrics — Smarter Teaching Starts Here</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  background: #f5f0eb;
+  overflow-x: hidden;
+  min-height: 100vh;
+}
+
+/* ── BACKGROUND CANVAS ── */
+.bg-canvas {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  background:
+    radial-gradient(ellipse 70% 60% at 15% 20%, rgba(255,180,100,0.28) 0%, transparent 65%),
+    radial-gradient(ellipse 60% 55% at 85% 15%, rgba(130,190,255,0.30) 0%, transparent 65%),
+    radial-gradient(ellipse 50% 45% at 75% 85%, rgba(160,230,180,0.22) 0%, transparent 65%),
+    radial-gradient(ellipse 40% 40% at 20% 80%, rgba(255,150,180,0.18) 0%, transparent 65%),
+    #f7f2ec;
+}
+
+/* ── NAV ── */
+/* ── NAV: full-width edge bar with gradient accent line ── */
+nav {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 100;
+  background: rgba(255,255,255,0.82);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(0,0,0,0.07);
+  padding: 0 48px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 1px 0 rgba(255,255,255,0.9), 0 4px 24px rgba(0,0,0,0.06);
+  transition: background .3s, box-shadow .3s;
+}
+
+/* animated gradient accent line along the bottom */
+nav::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, #4e7bff, #a855f7, #ec4899, #f59e0b, #4e7bff);
+  background-size: 300% 100%;
+  animation: navLineFlow 5s linear infinite;
+  opacity: 0.7;
+}
+@keyframes navLineFlow {
+  0%   { background-position: 0% 50%; }
+  100% { background-position: 300% 50%; }
+}
+
+nav.scrolled {
+  background: rgba(255,255,255,0.97);
+  box-shadow: 0 1px 0 rgba(255,255,255,0.9), 0 6px 32px rgba(0,0,0,0.09);
+}
+
+.nav-inner {
+  width: 100%;
+  max-width: 1160px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.nav-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 19px;
+  font-weight: 800;
+  color: #1a2340;
+  letter-spacing: -0.5px;
+  text-decoration: none;
+}
+
+.logo-mark {
+  width: 34px; height: 34px;
+  background: linear-gradient(135deg, #4e7bff, #a855f7);
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 3px 10px rgba(78,123,255,0.35);
+}
+
+.nav-links {
+  display: flex;
+  gap: 4px;
+  list-style: none;
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+}
+.nav-links a {
+  font-size: 14px;
+  font-weight: 500;
+  color: #6b7280;
+  text-decoration: none;
+  padding: 6px 14px;
+  border-radius: 8px;
+  transition: color 0.2s, background 0.2s;
+  position: relative;
+}
+.nav-links a:hover {
+  color: #1a2340;
+  background: rgba(78,123,255,0.07);
+}
+/* active underline dot */
+.nav-links a::after {
+  content: '';
+  position: absolute;
+  bottom: 2px; left: 50%;
+  transform: translateX(-50%) scaleX(0);
+  width: 16px; height: 2px;
+  border-radius: 1px;
+  background: linear-gradient(90deg,#4e7bff,#a855f7);
+  transition: transform 0.2s;
+}
+.nav-links a:hover::after { transform: translateX(-50%) scaleX(1); }
+
+.nav-right {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.btn-login {
+  padding: 8px 18px;
+  border-radius: 8px;
+  border: 1.5px solid #e5e7eb;
+  background: transparent;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.btn-login:hover { border-color: #4e7bff; color: #4e7bff; background: rgba(78,123,255,0.05); }
+
+.btn-signup {
+  padding: 8px 20px;
+  border-radius: 8px;
+  border: none;
+  background: linear-gradient(135deg, #4e7bff, #7c3aed);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+  cursor: pointer;
+  box-shadow: 0 3px 12px rgba(78,123,255,0.38);
+  transition: all 0.25s;
+}
+.btn-signup:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(78,123,255,0.5); }
+
+/* ── HERO ── */
+.hero {
+  position: relative;
+  z-index: 1;
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 1fr 1.1fr;
+  align-items: center;
+  gap: 40px;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 110px 40px 80px;
+}
+
+.hero-left {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(78,123,255,0.1);
+  border: 1px solid rgba(78,123,255,0.22);
+  border-radius: 100px;
+  padding: 7px 16px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #4e7bff;
+  width: fit-content;
+}
+
+.badge-spark { font-size: 15px; }
+
+.hero-title {
+  font-size: clamp(38px, 5vw, 62px);
+  font-weight: 800;
+  line-height: 1.08;
+  letter-spacing: -0.03em;
+  color: #0f1729;
+}
+
+.hero-title .highlight {
+  position: relative;
+  display: inline-block;
+  color: #4e7bff;
+}
+
+.hero-title .highlight::after {
+  content: '';
+  position: absolute;
+  bottom: 4px; left: 0; right: 0;
+  height: 6px;
+  background: linear-gradient(90deg, #4e7bff44, #a855f744);
+  border-radius: 3px;
+  z-index: -1;
+}
+
+.hero-sub {
+  font-size: 17px;
+  line-height: 1.7;
+  color: #6b7280;
+  max-width: 430px;
+  font-weight: 500;
+}
+
+.hero-ctas {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.cta-main {
+  padding: 15px 32px;
+  background: linear-gradient(135deg, #4e7bff, #7c3aed);
+  color: #fff;
+  border: none;
+  border-radius: 14px;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 6px 24px rgba(78,123,255,0.4);
+  transition: all 0.25s;
+  letter-spacing: -0.01em;
+}
+.cta-main:hover { transform: translateY(-2px); box-shadow: 0 10px 32px rgba(78,123,255,0.5); }
+
+.cta-secondary {
+  padding: 15px 28px;
+  background: rgba(255,255,255,0.85);
+  color: #374151;
+  border: 1.5px solid rgba(0,0,0,0.1);
+  border-radius: 14px;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  backdrop-filter: blur(10px);
+}
+.cta-secondary:hover { background: #fff; border-color: rgba(78,123,255,0.3); }
+
+.hero-stats {
+  display: flex;
+  gap: 28px;
+  padding-top: 8px;
+}
+
+.hero-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.stat-num {
+  font-size: 26px;
+  font-weight: 800;
+  color: #0f1729;
+  letter-spacing: -0.04em;
+}
+
+.stat-lbl {
+  font-size: 12px;
+  color: #9ca3af;
+  font-weight: 500;
+}
+
+.stat-divider {
+  width: 1px;
+  background: #e5e7eb;
+  align-self: stretch;
+}
+
+/* ── HERO ILLUSTRATION AREA ── */
+.hero-right {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 580px;
+}
+
+/* Floating cards */
+.float-card {
+  position: absolute;
+  background: rgba(255,255,255,0.92);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255,255,255,0.95);
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+  animation: float 6s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%,100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+/* MAIN DASHBOARD CARD */
+.dashboard-card {
+  width: 340px;
+  padding: 0;
+  overflow: hidden;
+  border-radius: 20px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.14);
+  background: #fff;
+  animation: float 7s ease-in-out infinite;
+  z-index: 3;
+}
+
+.dash-header {
+  background: linear-gradient(135deg, #4e7bff, #7c3aed);
+  padding: 18px 20px 14px;
+  color: #fff;
+}
+
+.dash-header-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.dash-app-name {
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: -0.3px;
+}
+
+.dash-week-badge {
+  background: rgba(255,255,255,0.2);
+  border-radius: 20px;
+  padding: 3px 10px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.dash-greeting {
+  font-size: 11px;
+  opacity: 0.85;
+}
+
+.dash-name { font-size: 15px; font-weight: 700; margin-top: 2px; }
+
+.dash-mini-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  padding: 14px 20px;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.dms { text-align: center; }
+.dms-val { font-size: 20px; font-weight: 800; letter-spacing: -0.04em; }
+.dms-lbl { font-size: 9px; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 1px; }
+.dms-val.blue { color: #4e7bff; }
+.dms-val.red { color: #ef4444; }
+.dms-val.green { color: #10b981; }
+
+.dash-flagged-header {
+  padding: 10px 20px 6px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pulse { width: 7px; height: 7px; border-radius: 50%; background: #ef4444; box-shadow: 0 0 0 2px rgba(239,68,68,0.25); animation: pulse-ring 1.5s ease infinite; }
+@keyframes pulse-ring { 0%,100% { box-shadow: 0 0 0 2px rgba(239,68,68,0.25); } 50% { box-shadow: 0 0 0 5px rgba(239,68,68,0.1); } }
+
+.dash-student-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 20px;
+}
+
+.stu-av {
+  width: 28px; height: 28px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 800;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.stu-info { flex: 1; }
+.stu-name { font-size: 12px; font-weight: 600; color: #1f2937; }
+.stu-reason { font-size: 10px; color: #9ca3af; }
+
+.risk-tag {
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 5px;
+}
+.risk-tag.high { background: #fee2e2; color: #dc2626; }
+.risk-tag.med { background: #fef3c7; color: #d97706; }
+
+.dash-chart-area {
+  padding: 12px 20px 16px;
+  border-top: 1px solid #f3f4f6;
+}
+.chart-label { font-size: 10px; color: #9ca3af; font-weight: 600; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em; }
+.mini-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  height: 48px;
+}
+.mini-bar {
+  flex: 1;
+  border-radius: 3px 3px 0 0;
+  min-height: 6px;
+}
+
+/* FLOATING SMALL CARDS */
+.card-risk {
+  top: 30px; right: 10px;
+  padding: 14px 16px;
+  width: 160px;
+  animation-delay: 1s;
+  animation-duration: 5s;
+  z-index: 4;
+}
+
+.card-risk-title { font-size: 10px; color: #9ca3af; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
+.risk-big-num { font-size: 36px; font-weight: 800; letter-spacing: -0.04em; color: #ef4444; line-height: 1; }
+.risk-sub-text { font-size: 11px; color: #6b7280; margin-top: 4px; }
+.risk-mini-bar { height: 4px; background: #fee2e2; border-radius: 2px; margin-top: 8px; overflow: hidden; }
+.risk-mini-fill { height: 100%; width: 31%; background: linear-gradient(90deg, #ef4444, #f87171); border-radius: 2px; }
+
+.card-predict {
+  bottom: 50px; left: -10px;
+  padding: 14px 16px;
+  width: 180px;
+  animation-delay: 2s;
+  animation-duration: 8s;
+  z-index: 4;
+}
+
+.predict-title { font-size: 10px; color: #9ca3af; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 10px; }
+.predict-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+.predict-name { font-size: 11px; color: #374151; font-weight: 600; }
+.predict-score { font-size: 11px; font-weight: 700; }
+.predict-score.good { color: #10b981; }
+.predict-score.warn { color: #f59e0b; }
+.predict-score.bad { color: #ef4444; }
+
+.card-intervention {
+  top: 160px; right: -20px;
+  padding: 12px 14px;
+  width: 155px;
+  animation-delay: 0.5s;
+  animation-duration: 6s;
+  z-index: 4;
+}
+
+.intv-title { font-size: 10px; color: #9ca3af; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
+.intv-item { display: flex; align-items: center; gap: 7px; margin-bottom: 6px; }
+.intv-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.intv-text { font-size: 11px; color: #374151; font-weight: 500; }
+
+/* Decorative blobs around hero */
+.blob {
+  position: absolute;
+  border-radius: 50%;
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* ── SECTION WRAPPER ── */
+.section-wrap {
+  position: relative;
+  z-index: 1;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 40px;
+}
+
+/* ── FEATURE CARDS ROW ── */
+.features-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  position: relative;
+  z-index: 1;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 40px 80px;
+}
+
+.feat-card {
+  background: rgba(255,255,255,0.85);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255,255,255,0.9);
+  border-radius: 22px;
+  padding: 32px 28px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.06);
+  transition: transform 0.25s, box-shadow 0.25s;
+}
+.feat-card:hover { transform: translateY(-4px); box-shadow: 0 12px 40px rgba(0,0,0,0.1); }
+
+.feat-icon-wrap {
+  width: 52px; height: 52px;
+  border-radius: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 18px;
+  font-size: 24px;
+}
+
+.feat-title { font-size: 18px; font-weight: 800; color: #0f1729; margin-bottom: 10px; letter-spacing: -0.02em; }
+.feat-desc { font-size: 14px; color: #6b7280; line-height: 1.65; font-weight: 500; }
+
+/* ── HOW IT WORKS ── */
+.how-section {
+  position: relative;
+  z-index: 1;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 60px 40px 90px;
+}
+
+.section-eyebrow {
+  font-size: 13px;
+  font-weight: 700;
+  color: #7c3aed;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 12px;
+}
+
+.section-title {
+  font-size: clamp(30px, 4vw, 46px);
+  font-weight: 800;
+  color: #0f1729;
+  letter-spacing: -0.03em;
+  line-height: 1.12;
+  margin-bottom: 16px;
+}
+
+.section-sub {
+  font-size: 16px;
+  color: #6b7280;
+  max-width: 520px;
+  line-height: 1.7;
+  font-weight: 500;
+  margin-bottom: 52px;
+}
+
+.how-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+}
+
+.how-card {
+  background: rgba(255,255,255,0.8);
+  border: 1px solid rgba(255,255,255,0.9);
+  border-radius: 20px;
+  padding: 28px 22px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+  position: relative;
+}
+
+.how-step-num {
+  width: 36px; height: 36px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  font-weight: 800;
+  color: #fff;
+  margin-bottom: 16px;
+}
+
+.how-step-arrow {
+  position: absolute;
+  top: 36px; right: -14px;
+  z-index: 2;
+  font-size: 20px;
+  color: #d1d5db;
+}
+
+.how-card:last-child .how-step-arrow { display: none; }
+
+.how-card-title { font-size: 15px; font-weight: 800; color: #0f1729; margin-bottom: 8px; letter-spacing: -0.02em; }
+.how-card-desc { font-size: 13px; color: #6b7280; line-height: 1.6; font-weight: 500; }
+
+/* ── ANALYTICS VISUAL SECTION ── */
+.analytics-section {
+  position: relative;
+  z-index: 1;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px 40px 90px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 60px;
+  align-items: center;
+}
+
+.analytics-visual {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.anl-main-card {
+  background: #fff;
+  border-radius: 20px;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.1);
+  overflow: hidden;
+}
+
+.anl-header {
+  background: linear-gradient(135deg, #10b981, #059669);
+  padding: 16px 20px;
+  color: #fff;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.anl-header-title { font-size: 13px; font-weight: 700; }
+.anl-header-tag {
+  background: rgba(255,255,255,0.2);
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.anl-body { padding: 16px 20px; }
+
+.anl-student-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid #f9fafb;
+}
+.anl-student-item:last-child { border-bottom: none; }
+
+.anl-av {
+  width: 32px; height: 32px;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 800;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.anl-info { flex: 1; }
+.anl-name { font-size: 13px; font-weight: 700; color: #1f2937; }
+.anl-detail { font-size: 11px; color: #9ca3af; margin-top: 1px; }
+
+.anl-score-col { text-align: right; }
+.anl-score { font-size: 15px; font-weight: 800; letter-spacing: -0.03em; }
+.anl-trend { font-size: 10px; font-weight: 600; margin-top: 1px; }
+
+.anl-mini-card {
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.anl-mini-icon {
+  width: 44px; height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  flex-shrink: 0;
+}
+.anl-mini-label { font-size: 11px; color: #9ca3af; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+.anl-mini-val { font-size: 22px; font-weight: 800; color: #0f1729; letter-spacing: -0.04em; }
+.anl-mini-sub { font-size: 11px; font-weight: 600; margin-top: 2px; }
+
+/* ── TESTIMONIALS ── */
+.test-section {
+  position: relative;
+  z-index: 1;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px 40px 90px;
+}
+
+.test-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 18px;
+  margin-top: 44px;
+}
+
+.test-card {
+  background: rgba(255,255,255,0.85);
+  border: 1px solid rgba(255,255,255,0.95);
+  border-radius: 20px;
+  padding: 26px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+  transition: transform 0.2s;
+}
+.test-card:hover { transform: translateY(-3px); }
+
+.test-stars { color: #f59e0b; font-size: 14px; margin-bottom: 12px; letter-spacing: 1px; }
+.test-text { font-size: 14px; color: #374151; line-height: 1.7; font-weight: 500; margin-bottom: 20px; font-style: italic; }
+.test-author { display: flex; align-items: center; gap: 10px; }
+.test-av { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; color: #fff; flex-shrink: 0; }
+.test-name { font-size: 13px; font-weight: 700; color: #0f1729; }
+.test-role { font-size: 11px; color: #9ca3af; margin-top: 1px; }
+
+/* ── AUTH SECTION ── */
+.auth-section {
+  position: relative;
+  z-index: 1;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px 40px 60px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 64px;
+  align-items: center;
+}
+
+.auth-visual {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* Calendar card visual */
+.cal-card {
+  background: #fff;
+  border-radius: 20px;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.1);
+  overflow: hidden;
+}
+.cal-header {
+  background: linear-gradient(135deg, #f59e0b, #ef4444);
+  padding: 16px 20px;
+  color: #fff;
+}
+.cal-title { font-size: 13px; font-weight: 700; }
+.cal-month { font-size: 22px; font-weight: 800; margin-top: 2px; }
+.cal-grid-days {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+  padding: 14px 14px 18px;
+}
+.cal-day { text-align: center; padding: 6px 2px; font-size: 11px; border-radius: 7px; font-weight: 600; }
+.cal-day.head { color: #9ca3af; font-size: 10px; }
+.cal-day.today { background: linear-gradient(135deg, #4e7bff, #7c3aed); color: #fff; }
+.cal-day.event { background: #fef3c7; color: #d97706; }
+.cal-day.normal { color: #374151; }
+.cal-day.faded { color: #d1d5db; }
+
+.auth-mini-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.auth-mini {
+  background: #fff;
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.07);
+}
+.auth-mini-icon { font-size: 22px; margin-bottom: 8px; }
+.auth-mini-title { font-size: 13px; font-weight: 700; color: #0f1729; margin-bottom: 4px; }
+.auth-mini-text { font-size: 11px; color: #9ca3af; font-weight: 500; line-height: 1.5; }
+
+/* Login/Signup form */
+.auth-form-card {
+  background: rgba(255,255,255,0.92);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255,255,255,0.95);
+  border-radius: 24px;
+  padding: 36px 32px;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.08);
+}
+
+.auth-tabs {
+  display: flex;
+  background: #f3f4f6;
+  border-radius: 12px;
+  padding: 4px;
+  margin-bottom: 28px;
+}
+.auth-tab {
+  flex: 1;
+  padding: 10px;
+  border-radius: 9px;
+  border: none;
+  background: transparent;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  color: #9ca3af;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.auth-tab.active {
+  background: #fff;
+  color: #0f1729;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.auth-form-title { font-size: 22px; font-weight: 800; color: #0f1729; margin-bottom: 6px; letter-spacing: -0.02em; }
+.auth-form-sub { font-size: 14px; color: #9ca3af; margin-bottom: 24px; font-weight: 500; }
+
+.auth-input {
+  width: 100%;
+  padding: 13px 16px;
+  background: #f9fafb;
+  border: 1.5px solid #f3f4f6;
+  border-radius: 12px;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  color: #0f1729;
+  outline: none;
+  transition: all 0.2s;
+  margin-bottom: 12px;
+}
+.auth-input::placeholder { color: #d1d5db; }
+.auth-input:focus { border-color: #4e7bff; background: #fff; box-shadow: 0 0 0 3px rgba(78,123,255,0.1); }
+
+.auth-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+.auth-submit {
+  width: 100%;
+  padding: 14px;
+  background: linear-gradient(135deg, #4e7bff, #7c3aed);
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  margin-top: 6px;
+  box-shadow: 0 4px 16px rgba(78,123,255,0.38);
+  transition: all 0.25s;
+}
+.auth-submit:hover { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(78,123,255,0.5); }
+
+.auth-foot { text-align: center; font-size: 12px; color: #9ca3af; margin-top: 16px; }
+.auth-foot a { color: #4e7bff; text-decoration: none; font-weight: 600; }
+
+/* ── CTA BANNER ── */
+.cta-section {
+  position: relative;
+  z-index: 1;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 40px 100px;
+}
+
+.cta-card {
+  background: linear-gradient(135deg, #4e7bff 0%, #7c3aed 50%, #ec4899 100%);
+  border-radius: 28px;
+  padding: 64px 56px;
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(78,123,255,0.35);
+  position: relative;
+  overflow: hidden;
+}
+
+.cta-card::before {
+  content: '';
+  position: absolute;
+  top: -60px; left: -60px;
+  width: 300px; height: 300px;
+  background: rgba(255,255,255,0.07);
+  border-radius: 50%;
+}
+.cta-card::after {
+  content: '';
+  position: absolute;
+  bottom: -80px; right: -40px;
+  width: 280px; height: 280px;
+  background: rgba(255,255,255,0.05);
+  border-radius: 50%;
+}
+
+.cta-title {
+  font-size: clamp(26px, 3.5vw, 42px);
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: -0.03em;
+  line-height: 1.12;
+  margin-bottom: 14px;
+  position: relative;
+  z-index: 1;
+}
+.cta-sub { font-size: 16px; color: rgba(255,255,255,0.82); margin-bottom: 36px; font-weight: 500; position: relative; z-index: 1; }
+.cta-btns { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; position: relative; z-index: 1; }
+
+.cta-btn-white {
+  padding: 14px 32px;
+  background: #fff;
+  color: #4e7bff;
+  border: none;
+  border-radius: 14px;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+  transition: all 0.25s;
+}
+.cta-btn-white:hover { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(0,0,0,0.2); }
+
+.cta-btn-outline {
+  padding: 14px 32px;
+  background: rgba(255,255,255,0.15);
+  color: #fff;
+  border: 1.5px solid rgba(255,255,255,0.4);
+  border-radius: 14px;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.25s;
+  backdrop-filter: blur(10px);
+}
+.cta-btn-outline:hover { background: rgba(255,255,255,0.25); }
+
+/* ── FOOTER ── */
+footer {
+  position: relative;
+  z-index: 1;
+  background: rgba(255,255,255,0.7);
+  backdrop-filter: blur(16px);
+  border-top: 1px solid rgba(255,255,255,0.8);
+  padding: 30px 60px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.footer-logo { font-size: 16px; font-weight: 800; color: #0f1729; display: flex; align-items: center; gap: 8px; }
+.footer-copy { font-size: 13px; color: #9ca3af; font-weight: 500; }
+.footer-links { display: flex; gap: 24px; }
+.footer-links a { font-size: 13px; color: #9ca3af; text-decoration: none; font-weight: 500; transition: color 0.2s; }
+.footer-links a:hover { color: #4e7bff; }
+
+/* ════════════════════════════════════════════
+   ENHANCEMENT LAYER — animations & color boost
+   ════════════════════════════════════════════ */
+
+/* Richer background mesh — more vivid stops */
+.bg-canvas {
+  background:
+    radial-gradient(ellipse 65% 55% at 10% 18%,  rgba(255,160,60,0.32)  0%, transparent 62%),
+    radial-gradient(ellipse 55% 50% at 88% 12%,  rgba(90,180,255,0.34)  0%, transparent 62%),
+    radial-gradient(ellipse 50% 45% at 78% 88%,  rgba(130,240,170,0.26) 0%, transparent 62%),
+    radial-gradient(ellipse 45% 42% at 18% 82%,  rgba(255,120,190,0.22) 0%, transparent 62%),
+    radial-gradient(ellipse 35% 35% at 50% 50%,  rgba(180,140,255,0.14) 0%, transparent 65%),
+    #f7f2ec;
+  animation: bgDrift 18s ease-in-out infinite alternate;
+}
+@keyframes bgDrift {
+  0%   { filter: hue-rotate(0deg)   brightness(1); }
+  50%  { filter: hue-rotate(8deg)   brightness(1.03); }
+  100% { filter: hue-rotate(-6deg)  brightness(1.01); }
+}
+
+/* ── SCROLL REVEAL ── */
+.reveal {
+  opacity: 0;
+  transform: translateY(36px);
+  transition: opacity 0.75s cubic-bezier(.22,1,.36,1),
+              transform 0.75s cubic-bezier(.22,1,.36,1);
+}
+.reveal.visible { opacity: 1; transform: translateY(0); }
+.reveal-left  { opacity:0; transform:translateX(-40px); transition: opacity .75s cubic-bezier(.22,1,.36,1), transform .75s cubic-bezier(.22,1,.36,1); }
+.reveal-right { opacity:0; transform:translateX(40px);  transition: opacity .75s cubic-bezier(.22,1,.36,1), transform .75s cubic-bezier(.22,1,.36,1); }
+.reveal-left.visible, .reveal-right.visible { opacity:1; transform:translate(0); }
+
+/* ── HERO ENTRANCE ── */
+.hero-badge   { animation: fadeUp .7s .05s both; }
+.hero-title   { animation: fadeUp .7s .15s both; }
+.hero-sub     { animation: fadeUp .7s .25s both; }
+.hero-ctas    { animation: fadeUp .7s .35s both; }
+.hero-stats   { animation: fadeUp .7s .45s both; }
+.hero-right   { animation: fadeUp .8s .1s  both; }
+
+@keyframes fadeUp {
+  from { opacity:0; transform:translateY(28px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+
+/* ── LOGO MARK pulse glow ── */
+.logo-mark {
+  animation: logoPulse 3s ease-in-out infinite;
+}
+@keyframes logoPulse {
+  0%,100% { box-shadow: 0 4px 12px rgba(78,123,255,.35); }
+  50%     { box-shadow: 0 4px 28px rgba(168,85,247,.55); }
+}
+
+/* ── NAV scroll shrink ── */
+nav { transition: padding .3s, box-shadow .3s, background .3s; }
+nav.scrolled { padding:10px 28px; box-shadow:0 6px 40px rgba(0,0,0,.12); background:rgba(255,255,255,.96); }
+
+/* ── HERO badge shimmer ── */
+.hero-badge {
+  position: relative; overflow: hidden;
+  background: linear-gradient(90deg,rgba(78,123,255,.08),rgba(168,85,247,.1),rgba(78,123,255,.08));
+  background-size: 200% 100%;
+  animation: fadeUp .7s .05s both, badgeShimmer 3s 1s ease-in-out infinite;
+}
+@keyframes badgeShimmer {
+  0%,100% { background-position:0% 50%; }
+  50%     { background-position:100% 50%; }
+}
+
+/* ── HIGHLIGHT word glow pulse ── */
+.hero-title .highlight {
+  background: linear-gradient(90deg,#4e7bff,#a855f7,#f472b6,#4e7bff);
+  background-size: 300% 100%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: gradientFlow 4s ease infinite;
+}
+.hero-title .highlight::after { display:none; }
+@keyframes gradientFlow {
+  0%,100% { background-position:0% 50%; }
+  50%     { background-position:100% 50%; }
+}
+
+/* ── CTA MAIN shimmer sweep ── */
+.cta-main {
+  position: relative; overflow: hidden;
+  background: linear-gradient(135deg,#4e7bff,#7c3aed,#ec4899);
+  background-size: 200% 200%;
+  animation: ctaGrad 4s ease infinite;
+  box-shadow: 0 6px 28px rgba(78,123,255,.45), 0 2px 8px rgba(168,85,247,.3);
+}
+@keyframes ctaGrad {
+  0%,100% { background-position:0% 50%; }
+  50%     { background-position:100% 50%; }
+}
+.cta-main::after {
+  content:''; position:absolute; inset:0;
+  background:linear-gradient(105deg,transparent 35%,rgba(255,255,255,.22) 50%,transparent 65%);
+  transform:translateX(-100%);
+}
+.cta-main:hover::after { animation: shimmerSwipe .55s ease forwards; }
+@keyframes shimmerSwipe { to { transform:translateX(100%); } }
+.cta-main:hover { transform:translateY(-2px); box-shadow:0 10px 36px rgba(78,123,255,.55),0 4px 12px rgba(236,72,153,.3); }
+
+/* ── SIGN UP NAV btn shimmer ── */
+.btn-signup {
+  position:relative; overflow:hidden;
+  background: linear-gradient(135deg,#4e7bff,#7c3aed);
+  background-size:200% 200%; animation:ctaGrad 4s ease infinite;
+}
+.btn-signup::after {
+  content:''; position:absolute; inset:0;
+  background:linear-gradient(105deg,transparent 35%,rgba(255,255,255,.2) 50%,transparent 65%);
+  transform:translateX(-100%);
+}
+.btn-signup:hover::after { animation:shimmerSwipe .5s ease forwards; }
+
+/* ── FLOATING CARD enhanced glow ── */
+.dashboard-card {
+  box-shadow: 0 24px 72px rgba(0,0,0,.16), 0 0 0 1px rgba(255,255,255,.9),
+              0 0 60px rgba(78,123,255,.08);
+}
+.float-card {
+  box-shadow: 0 12px 40px rgba(0,0,0,.12), 0 0 0 1px rgba(255,255,255,.92);
+}
+
+/* ── PULSE dot ── */
+.pulse {
+  animation: pulseDot 1.6s ease infinite;
+}
+@keyframes pulseDot {
+  0%,100% { box-shadow:0 0 0 2px rgba(239,68,68,.3); background:#ef4444; }
+  50%     { box-shadow:0 0 0 6px rgba(239,68,68,.08); background:#f87171; }
+}
+
+/* ── FEATURE CARDS richer hover ── */
+.feat-card {
+  transition: transform .3s cubic-bezier(.22,1,.36,1), box-shadow .3s, border-color .3s;
+  border: 1px solid rgba(255,255,255,.7);
+}
+.feat-card:hover {
+  transform: translateY(-7px) scale(1.01);
+  box-shadow: 0 20px 56px rgba(78,123,255,.14), 0 4px 16px rgba(0,0,0,.06);
+  border-color: rgba(78,123,255,.25);
+}
+.feat-icon-wrap {
+  transition: transform .3s;
+}
+.feat-card:hover .feat-icon-wrap { transform:scale(1.12) rotate(-4deg); }
+
+/* ── HOW CARDS ── */
+.how-card {
+  transition: transform .3s cubic-bezier(.22,1,.36,1), box-shadow .3s;
+}
+.how-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 16px 48px rgba(78,123,255,.12);
+}
+.how-step-num { transition: transform .3s; }
+.how-card:hover .how-step-num { transform:scale(1.15) rotate(-5deg); }
+
+/* ── TESTIMONIAL CARDS ── */
+.test-card {
+  transition: transform .3s cubic-bezier(.22,1,.36,1), box-shadow .3s;
+  border: 1px solid rgba(255,255,255,.8);
+}
+.test-card:hover {
+  transform: translateY(-6px) rotate(-.4deg);
+  box-shadow: 0 20px 50px rgba(78,123,255,.12);
+}
+
+/* ── ANALYTICS mini cards ── */
+.anl-mini-card { transition: transform .25s, box-shadow .25s; }
+.anl-mini-card:hover { transform:translateY(-3px); box-shadow:0 10px 32px rgba(0,0,0,.12); }
+
+/* ── AUTH mini cards ── */
+.auth-mini { transition: transform .25s, box-shadow .25s; }
+.auth-mini:hover { transform:translateY(-4px); box-shadow:0 10px 28px rgba(78,123,255,.1); }
+
+/* ── AUTH INPUT glow ── */
+.auth-input:focus {
+  border-color:#4e7bff;
+  box-shadow: 0 0 0 3px rgba(78,123,255,.12), 0 2px 8px rgba(78,123,255,.08);
+}
+
+/* ── AUTH SUBMIT shimmer ── */
+.auth-submit {
+  position:relative; overflow:hidden;
+  background: linear-gradient(135deg,#4e7bff,#7c3aed);
+  background-size:200% 200%; animation:ctaGrad 4s ease infinite;
+}
+.auth-submit::after {
+  content:''; position:absolute; inset:0;
+  background:linear-gradient(105deg,transparent 35%,rgba(255,255,255,.18) 50%,transparent 65%);
+  transform:translateX(-100%);
+}
+.auth-submit:hover::after { animation:shimmerSwipe .5s ease forwards; }
+.auth-submit:hover { transform:translateY(-1px); box-shadow:0 10px 32px rgba(78,123,255,.5); }
+
+/* ── CTA CARD animated gradient ── */
+.cta-card {
+  background: linear-gradient(135deg,#4e7bff,#7c3aed,#ec4899,#f59e0b,#4e7bff);
+  background-size: 300% 300%;
+  animation: ctaBgFlow 8s ease infinite;
+  box-shadow: 0 24px 72px rgba(78,123,255,.4), 0 8px 24px rgba(236,72,153,.2);
+}
+@keyframes ctaBgFlow {
+  0%,100% { background-position:0% 50%; }
+  50%     { background-position:100% 50%; }
+}
+.cta-btn-white:hover { transform:translateY(-2px) scale(1.02); box-shadow:0 10px 36px rgba(0,0,0,.2); }
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar { width:6px; }
+::-webkit-scrollbar-track { background:#f0ebe4; }
+::-webkit-scrollbar-thumb { background:linear-gradient(180deg,#4e7bff,#7c3aed); border-radius:3px; }
+
+/* ── FOOTER LINKS ── */
+.footer-links a { position:relative; }
+.footer-links a::after {
+  content:''; position:absolute; bottom:-2px; left:0; right:100%;
+  height:1px; background:#4e7bff;
+  transition: right .25s;
+}
+.footer-links a:hover::after { right:0; }
+
+/* ── STAGGER DELAYS for grids ── */
+.features-row .feat-card:nth-child(1) { transition-delay:.05s; }
+.features-row .feat-card:nth-child(2) { transition-delay:.12s; }
+.features-row .feat-card:nth-child(3) { transition-delay:.19s; }
+.features-row .feat-card:nth-child(4) { transition-delay:.05s; }
+.features-row .feat-card:nth-child(5) { transition-delay:.12s; }
+.features-row .feat-card:nth-child(6) { transition-delay:.19s; }
+
+.how-grid .how-card:nth-child(1) { transition-delay:.05s; }
+.how-grid .how-card:nth-child(2) { transition-delay:.12s; }
+.how-grid .how-card:nth-child(3) { transition-delay:.19s; }
+.how-grid .how-card:nth-child(4) { transition-delay:.26s; }
+
+.test-grid .test-card:nth-child(1) { transition-delay:.05s; }
+.test-grid .test-card:nth-child(2) { transition-delay:.12s; }
+.test-grid .test-card:nth-child(3) { transition-delay:.19s; }
+</style>
+</head>
+<body>
+
+<div class="bg-canvas"></div>
+
+<!-- ── NAV ── -->
+<nav id="navbar">
+  <div class="nav-inner">
+    <a class="nav-logo" href="#">
+      <div class="logo-mark">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5">
+          <path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/>
+        </svg>
+      </div>
+      EduMetrics
+    </a>
+    <ul class="nav-links">
+      <li><a href="#features">Features</a></li>
+      <li><a href="#how">How It Works</a></li>
+      <li><a href="#analytics">Analytics</a></li>
+    </ul>
+    <div class="nav-right">
+      <button class="btn-login" onclick="document.getElementById('auth').scrollIntoView({behavior:'smooth'});switchTab('login')">Log In</button>
+    </div>
+  </div>
+</nav>
+
+<!-- ── HERO ── -->
+<div class="hero">
+  <!-- LEFT TEXT -->
+  <div class="hero-left">
+    <div class="hero-badge">
+      <span class="badge-spark">✦</span>
+      AI-Powered Classroom Intelligence
+    </div>
+
+    <h1 class="hero-title">
+      See every student's<br>
+      <span class="highlight">risk score</span><br>
+      before it's too late
+    </h1>
+
+    <p class="hero-sub">
+      EduMetrics helps teachers track attendance, effort, and predicted scores in real time — so you can step in early and change outcomes.
+    </p>
+
+    <div class="hero-ctas">
+      <button class="cta-main" onclick="document.getElementById('auth').scrollIntoView({behavior:'smooth'});switchTab('login')">
+        Log In →
+      </button>
+      <button class="cta-secondary" onclick="document.getElementById('how').scrollIntoView({behavior:'smooth'})">
+        See How It Works
+      </button>
+    </div>
+
+    <div class="hero-stats">
+      <div class="hero-stat">
+        <div class="stat-num">40</div>
+        <div class="stat-lbl">Students tracked</div>
+      </div>
+      <div class="stat-divider"></div>
+      <div class="hero-stat">
+        <div class="stat-num">92%</div>
+        <div class="stat-lbl">Prediction accuracy</div>
+      </div>
+      <div class="stat-divider"></div>
+      <div class="hero-stat">
+        <div class="stat-num">8 min</div>
+        <div class="stat-lbl">Weekly review time</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT ILLUSTRATION -->
+  <div class="hero-right">
+
+    <!-- Decorative blobs -->
+    <div class="blob" style="width:200px;height:200px;background:radial-gradient(circle,rgba(78,123,255,0.15),transparent);top:20px;left:30px;"></div>
+    <div class="blob" style="width:160px;height:160px;background:radial-gradient(circle,rgba(168,85,247,0.12),transparent);bottom:40px;right:20px;"></div>
+
+    <!-- Main dashboard card -->
+    <div class="float-card dashboard-card" style="position:relative;z-index:3">
+      <div class="dash-header">
+        <div class="dash-header-top">
+          <div class="dash-app-name">EduMetrics</div>
+          <div class="dash-week-badge">Week 9</div>
+        </div>
+        <div class="dash-greeting">Welcome back,</div>
+        <div class="dash-name">Dr. Priya Malhotra · CSE</div>
+      </div>
+
+      <div class="dash-mini-stats">
+        <div class="dms">
+          <div class="dms-val blue">40</div>
+          <div class="dms-lbl">Students</div>
+        </div>
+        <div class="dms">
+          <div class="dms-val red">6</div>
+          <div class="dms-lbl">Flagged</div>
+        </div>
+        <div class="dms">
+          <div class="dms-val green">11</div>
+          <div class="dms-lbl">Actions</div>
+        </div>
+      </div>
+
+      <div class="dash-flagged-header">
+        <div class="pulse"></div>
+        Flagged This Week
+      </div>
+
+      <div class="dash-student-row">
+        <div class="stu-av" style="background:linear-gradient(135deg,#ef4444,#b91c1c)">RG</div>
+        <div class="stu-info">
+          <div class="stu-name">Rahul Gupta</div>
+          <div class="stu-reason">No activity · 10+ days</div>
+        </div>
+        <div class="risk-tag high">88%</div>
+      </div>
+      <div class="dash-student-row">
+        <div class="stu-av" style="background:linear-gradient(135deg,#f59e0b,#b45309)">KJ</div>
+        <div class="stu-info">
+          <div class="stu-name">Karan Joshi</div>
+          <div class="stu-reason">Zero quiz submissions</div>
+        </div>
+        <div class="risk-tag high">72%</div>
+      </div>
+      <div class="dash-student-row">
+        <div class="stu-av" style="background:linear-gradient(135deg,#f59e0b,#92400e)">AM</div>
+        <div class="stu-info">
+          <div class="stu-name">Aryan Mehta</div>
+          <div class="stu-reason">Attendance: 45%</div>
+        </div>
+        <div class="risk-tag med">61%</div>
+      </div>
+
+      <div class="dash-chart-area">
+        <div class="chart-label">Class Performance — Last 7 Weeks</div>
+        <div class="mini-bars">
+          <div class="mini-bar" style="height:52%;background:linear-gradient(to top,#4e7bff,#7c3aed)"></div>
+          <div class="mini-bar" style="height:60%;background:linear-gradient(to top,#4e7bff,#7c3aed)"></div>
+          <div class="mini-bar" style="height:58%;background:linear-gradient(to top,#4e7bff,#7c3aed)"></div>
+          <div class="mini-bar" style="height:65%;background:linear-gradient(to top,#4e7bff,#7c3aed)"></div>
+          <div class="mini-bar" style="height:61%;background:linear-gradient(to top,#4e7bff,#7c3aed)"></div>
+          <div class="mini-bar" style="height:64%;background:linear-gradient(to top,#4e7bff,#7c3aed)"></div>
+          <div class="mini-bar" style="height:63%;background:rgba(78,123,255,0.3);border:2px dashed #4e7bff"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Floating: Risk Score -->
+    <div class="float-card card-risk">
+      <div class="card-risk-title">Avg Risk Score</div>
+      <div class="risk-big-num">31<span style="font-size:18px">%</span></div>
+      <div class="risk-sub-text">Class-wide this week</div>
+      <div class="risk-mini-bar"><div class="risk-mini-fill"></div></div>
+    </div>
+
+    <!-- Floating: Predictions -->
+    <div class="float-card card-predict">
+      <div class="predict-title">Midterm Predictions</div>
+      <div class="predict-row">
+        <div class="predict-name">Dev M.</div>
+        <div class="predict-score good">96%</div>
+      </div>
+      <div class="predict-row">
+        <div class="predict-name">Neha V.</div>
+        <div class="predict-score good">84%</div>
+      </div>
+      <div class="predict-row">
+        <div class="predict-name">Tanya S.</div>
+        <div class="predict-score warn">64%</div>
+      </div>
+      <div class="predict-row">
+        <div class="predict-name">Rahul G.</div>
+        <div class="predict-score bad">40%</div>
+      </div>
+    </div>
+
+    <!-- Floating: Interventions -->
+    <div class="float-card card-intervention">
+      <div class="intv-title">Actions Logged</div>
+      <div class="intv-item">
+        <div class="intv-dot" style="background:#10b981"></div>
+        <div class="intv-text">Tutoring scheduled</div>
+      </div>
+      <div class="intv-item">
+        <div class="intv-dot" style="background:#4e7bff"></div>
+        <div class="intv-text">Parent email sent</div>
+      </div>
+      <div class="intv-item">
+        <div class="intv-dot" style="background:#7c3aed"></div>
+        <div class="intv-text">Counselor referred</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ── FEATURE CARDS ── -->
+<div id="features" class="features-row">
+  <div class="feat-card reveal">
+    <div class="feat-icon-wrap" style="background:linear-gradient(135deg,#dbeafe,#bfdbfe)">
+      <span style="font-size:26px">🎯</span>
+    </div>
+    <div class="feat-title">Real-Time Risk Flags</div>
+    <div class="feat-desc">Every student gets a weekly risk score based on attendance, effort, quiz history, and grade trends — automatically.</div>
+  </div>
+  <div class="feat-card reveal">
+    <div class="feat-icon-wrap" style="background:linear-gradient(135deg,#d1fae5,#a7f3d0)">
+      <span style="font-size:26px">🔮</span>
+    </div>
+    <div class="feat-title">Predict Scores Early</div>
+    <div class="feat-desc">Know how students will perform in midterms and finals — weeks before the exam — so you can actually do something about it.</div>
+  </div>
+  <div class="feat-card reveal">
+    <div class="feat-icon-wrap" style="background:linear-gradient(135deg,#ede9fe,#ddd6fe)">
+      <span style="font-size:26px">✅</span>
+    </div>
+    <div class="feat-title">Log Every Intervention</div>
+    <div class="feat-desc">Track tutoring sessions, counselor referrals, and parent communications — then see which actions are actually moving the needle.</div>
+  </div>
+</div>
+
+<!-- ── HOW IT WORKS ── -->
+<div class="how-section" id="how">
+  <div class="section-eyebrow reveal">How It Works</div>
+  <h2 class="section-title reveal">From data to action<br>in one platform</h2>
+  <p class="section-sub reveal">No spreadsheets, no chasing records. EduMetrics turns your class data into a clear weekly picture — every single week.</p>
+
+  <div class="how-grid">
+    <div class="how-card reveal">
+      <div class="how-step-num" style="background:linear-gradient(135deg,#4e7bff,#7c3aed)">01</div>
+      <div class="how-step-arrow">›</div>
+      <div style="font-size:28px;margin-bottom:12px">📊</div>
+      <div class="how-card-title">Data collected weekly</div>
+      <div class="how-card-desc">Attendance, quiz scores, assignment submissions, and engagement — all pulled together automatically every week.</div>
+    </div>
+    <div class="how-card reveal">
+      <div class="how-step-num" style="background:linear-gradient(135deg,#10b981,#059669)">02</div>
+      <div class="how-step-arrow">›</div>
+      <div style="font-size:28px;margin-bottom:12px">🤖</div>
+      <div class="how-card-title">AI computes risk scores</div>
+      <div class="how-card-desc">Our model weighs every signal and gives each student a risk score — updated every week as new data comes in.</div>
+    </div>
+    <div class="how-card reveal">
+      <div class="how-step-num" style="background:linear-gradient(135deg,#f59e0b,#d97706)">03</div>
+      <div class="how-step-arrow">›</div>
+      <div style="font-size:28px;margin-bottom:12px">⚠️</div>
+      <div class="how-card-title">Flagged students surface</div>
+      <div class="how-card-desc">See exactly who needs your attention — with diagnosis, history, and trend charts all in one view.</div>
+    </div>
+    <div class="how-card reveal">
+      <div class="how-step-num" style="background:linear-gradient(135deg,#ec4899,#be185d)">04</div>
+      <div class="how-card-title">You act and track it</div>
+      <div class="how-card-desc">Log interventions, email students or parents, and measure which actions actually improve outcomes over time.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ── ANALYTICS VISUAL ── -->
+<div class="analytics-section" id="analytics">
+  <div class="analytics-visual reveal-left">
+
+    <!-- Student performance card -->
+    <div class="anl-main-card">
+      <div class="anl-header">
+        <div class="anl-header-title">📈 Analytics — Post Midterm</div>
+        <div class="anl-header-tag">Week 9</div>
+      </div>
+      <div class="anl-body">
+        <div class="anl-student-item">
+          <div class="anl-av" style="background:linear-gradient(135deg,#10b981,#059669)">DM</div>
+          <div class="anl-info">
+            <div class="anl-name">Dev Malhotra</div>
+            <div class="anl-detail">Attendance 96% · Effort ↑</div>
+          </div>
+          <div class="anl-score-col">
+            <div class="anl-score" style="color:#10b981">96%</div>
+            <div class="anl-trend" style="color:#10b981">↑ +4</div>
+          </div>
+        </div>
+        <div class="anl-student-item">
+          <div class="anl-av" style="background:linear-gradient(135deg,#4e7bff,#7c3aed)">NV</div>
+          <div class="anl-info">
+            <div class="anl-name">Neha Verma</div>
+            <div class="anl-detail">Attendance 88% · Outperformed</div>
+          </div>
+          <div class="anl-score-col">
+            <div class="anl-score" style="color:#4e7bff">84%</div>
+            <div class="anl-trend" style="color:#10b981">↑ +12</div>
+          </div>
+        </div>
+        <div class="anl-student-item">
+          <div class="anl-av" style="background:linear-gradient(135deg,#f59e0b,#d97706)">TS</div>
+          <div class="anl-info">
+            <div class="anl-name">Tanya Singh</div>
+            <div class="anl-detail">Burnout risk · 3-week decline</div>
+          </div>
+          <div class="anl-score-col">
+            <div class="anl-score" style="color:#f59e0b">50%</div>
+            <div class="anl-trend" style="color:#ef4444">↓ -14</div>
+          </div>
+        </div>
+        <div class="anl-student-item">
+          <div class="anl-av" style="background:linear-gradient(135deg,#ef4444,#b91c1c)">RG</div>
+          <div class="anl-info">
+            <div class="anl-name">Rahul Gupta</div>
+            <div class="anl-detail">No activity · Unreachable</div>
+          </div>
+          <div class="anl-score-col">
+            <div class="anl-score" style="color:#ef4444">40%</div>
+            <div class="anl-trend" style="color:#ef4444">Critical</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Two small stat cards -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="anl-mini-card">
+        <div class="anl-mini-icon" style="background:#fef3c7">📉</div>
+        <div>
+          <div class="anl-mini-label">Avg Risk Score</div>
+          <div class="anl-mini-val">31%</div>
+          <div class="anl-mini-sub" style="color:#10b981">↓ Improving</div>
+        </div>
+      </div>
+      <div class="anl-mini-card">
+        <div class="anl-mini-icon" style="background:#ede9fe">🎓</div>
+        <div>
+          <div class="anl-mini-label">Class Average</div>
+          <div class="anl-mini-val">62.8%</div>
+          <div class="anl-mini-sub" style="color:#10b981">↑ +1.2% this week</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div>
+    <div class="section-eyebrow reveal">Deep Analytics</div>
+    <h2 class="section-title reveal">See the full<br>picture, clearly</h2>
+    <p class="section-sub reveal">Pre and post-exam breakdowns, percentile bands, subject performance, and semester trajectories — for every student in your class.</p>
+
+    <div style="display:flex;flex-direction:column;gap:16px">
+      <div style="display:flex;gap:14px;align-items:flex-start;background:rgba(255,255,255,0.8);border-radius:14px;padding:16px 18px;box-shadow:0 2px 12px rgba(0,0,0,0.05)">
+        <div style="font-size:22px;flex-shrink:0;margin-top:2px">📊</div>
+        <div>
+          <div style="font-size:14px;font-weight:700;color:#0f1729;margin-bottom:3px">Predicted vs Actual Scores</div>
+          <div style="font-size:13px;color:#6b7280;line-height:1.55">See who outperformed and who fell short — and find the pattern behind it.</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:14px;align-items:flex-start;background:rgba(255,255,255,0.8);border-radius:14px;padding:16px 18px;box-shadow:0 2px 12px rgba(0,0,0,0.05)">
+        <div style="font-size:22px;flex-shrink:0;margin-top:2px">🏷️</div>
+        <div>
+          <div style="font-size:14px;font-weight:700;color:#0f1729;margin-bottom:3px">Percentile Bands</div>
+          <div style="font-size:13px;color:#6b7280;line-height:1.55">Know where your top 20% and bottom 20% sit — every midterm and end term.</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:14px;align-items:flex-start;background:rgba(255,255,255,0.8);border-radius:14px;padding:16px 18px;box-shadow:0 2px 12px rgba(0,0,0,0.05)">
+        <div style="font-size:22px;flex-shrink:0;margin-top:2px">📅</div>
+        <div>
+          <div style="font-size:14px;font-weight:700;color:#0f1729;margin-bottom:3px">Full Semester Trajectory</div>
+          <div style="font-size:13px;color:#6b7280;line-height:1.55">Track week-by-week progress across all 14 weeks — spot trends before they become crises.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── AUTH SECTION ── -->
+<div class="auth-section" id="auth">
+  <!-- Left: visual + mini cards -->
+  <div class="auth-visual reveal-left">
+    <!-- Calendar card -->
+    <div class="cal-card">
+      <div class="cal-header">
+        <div class="cal-title">Academic Calendar</div>
+        <div class="cal-month">April 2026</div>
+      </div>
+      <div class="cal-grid-days">
+        <div class="cal-day head">Mo</div><div class="cal-day head">Tu</div><div class="cal-day head">We</div>
+        <div class="cal-day head">Th</div><div class="cal-day head">Fr</div><div class="cal-day head">Sa</div><div class="cal-day head">Su</div>
+        <div class="cal-day faded">31</div><div class="cal-day normal">1</div><div class="cal-day normal">2</div>
+        <div class="cal-day normal">3</div><div class="cal-day normal">4</div><div class="cal-day normal">5</div><div class="cal-day normal">6</div>
+        <div class="cal-day event">7</div><div class="cal-day normal">8</div><div class="cal-day normal">9</div>
+        <div class="cal-day normal">10</div><div class="cal-day today">11</div><div class="cal-day normal">12</div><div class="cal-day normal">13</div>
+        <div class="cal-day event">14</div><div class="cal-day normal">15</div><div class="cal-day normal">16</div>
+        <div class="cal-day normal">17</div><div class="cal-day normal">18</div><div class="cal-day event">19</div><div class="cal-day normal">20</div>
+        <div class="cal-day normal">21</div><div class="cal-day normal">22</div><div class="cal-day event">23</div>
+        <div class="cal-day normal">24</div><div class="cal-day normal">25</div><div class="cal-day normal">26</div><div class="cal-day normal">27</div>
+      </div>
+    </div>
+
+    <!-- 4 mini feature cards -->
+    <div class="auth-mini-cards">
+      <div class="auth-mini">
+        <div class="auth-mini-icon">⚡</div>
+        <div class="auth-mini-title">Instant Setup</div>
+        <div class="auth-mini-text">Add your class and start seeing insights in under 5 minutes.</div>
+      </div>
+      <div class="auth-mini">
+        <div class="auth-mini-icon">🔒</div>
+        <div class="auth-mini-title">Secure & Private</div>
+        <div class="auth-mini-text">GDPR & FERPA compliant. Your student data stays yours.</div>
+      </div>
+      <div class="auth-mini">
+        <div class="auth-mini-icon">📱</div>
+        <div class="auth-mini-title">Dark & Light Mode</div>
+        <div class="auth-mini-text">Full theme support. Works on any screen, any device.</div>
+      </div>
+      <div class="auth-mini">
+        <div class="auth-mini-icon">🔑</div>
+        <div class="auth-mini-title">Quick Access</div>
+        <div class="auth-mini-text">Sign in securely and get back to your dashboard in seconds.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right: Auth form -->
+  <div class="auth-form-card reveal-right">
+    <div id="form-login">
+      <div class="auth-form-title">Welcome back 👋</div>
+      <div class="auth-form-sub">Sign in to your teacher dashboard</div>
+      <div id="loginError" style="display:none;background:rgba(248,81,73,0.12);color:#f85149;border:1px solid rgba(248,81,73,0.3);border-radius:10px;padding:10px 14px;font-size:13px;margin-bottom:12px;font-weight:600;"></div>
+      <input class="auth-input" id="loginAdvisorId" type="text" placeholder="Advisor ID (e.g. ADV001)"/>
+      <input class="auth-input" id="loginPassword"  type="password" placeholder="Password"/>
+      <button class="auth-submit" id="loginBtn" onclick="handleLogin()">Sign In to EduMetrics</button>
+      <div class="auth-foot" style="font-size:12px;color:#888;margin-top:10px">Password format: YourName + last 3 digits of ID</div>
+    </div>
+  </div>
+</div>
+
+<!-- ── CTA ── -->
+<div class="cta-section">
+  <div class="cta-card reveal">
+    <h2 class="cta-title">Stop finding out about<br>struggling students too late</h2>
+    <p class="cta-sub">EduMetrics gives you the foresight to act — week by week, student by student.</p>
+    <div class="cta-btns">
+      <button class="cta-btn-white" onclick="document.getElementById('auth').scrollIntoView({behavior:'smooth'})">
+        Log In to My Account
+      </button>
+      <button class="cta-btn-outline" onclick="document.getElementById('how').scrollIntoView({behavior:'smooth'})">
+        See How It Works
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ── FOOTER ── -->
+<footer>
+  <div class="footer-logo">
+    <div class="logo-mark" style="width:28px;height:28px">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>
+    </div>
+    EduMetrics
+  </div>
+  <div class="footer-copy">© 2026 EduMetrics. Built for educators who care.</div>
+  <div class="footer-links">
+    <a href="#">Privacy</a>
+    <a href="#">Terms</a>
+    <a href="#">Support</a>
+    <a href="#">Contact</a>
+  </div>
+</footer>
+
+<script>
+/* ── AUTH TAB ── */
+function switchTab(tab) {
+  // Only login tab exists now
+  document.getElementById('form-login').style.display = 'block';
+}
+
+/* ── SCROLL REVEAL ── */
+const revealObserver = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      e.target.classList.add('visible');
+      revealObserver.unobserve(e.target);
+    }
+  });
+}, { threshold: 0.1, rootMargin: '0px 0px -60px 0px' });
+
+document.querySelectorAll('.reveal, .reveal-left, .reveal-right').forEach(el => {
+  revealObserver.observe(el);
+});
+
+/* ── NAV SCROLL ── */
+const navbar = document.getElementById('navbar');
+window.addEventListener('scroll', () => {
+  navbar.classList.toggle('scrolled', window.scrollY > 50);
+}, { passive: true });
+
+/* ── ANIMATED STAT COUNTERS ── */
+function animateCounter(el, target, suffix) {
+  const dur = 1600, fps = 60;
+  let frame = 0;
+  const totalFrames = dur / (1000 / fps);
+  const timer = setInterval(() => {
+    frame++;
+    const progress = frame / totalFrames;
+    const ease = 1 - Math.pow(1 - progress, 3);
+    const current = Math.round(ease * target);
+    el.textContent = current.toLocaleString() + suffix;
+    if (frame >= totalFrames) clearInterval(timer);
+  }, 1000 / fps);
+}
+
+const counterObs = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (!e.isIntersecting) return;
+    const el = e.target;
+    const raw = el.textContent.trim();
+    const num = parseFloat(raw.replace(/[^0-9.]/g,''));
+    const suffix = raw.replace(/[0-9.,]/g,'');
+    animateCounter(el, num, suffix);
+    counterObs.unobserve(el);
+  });
+}, { threshold: 0.8 });
+
+document.querySelectorAll('.stat-num').forEach(el => counterObs.observe(el));
+
+/* ── MOUSE-PARALLAX on hero right ── */
+const heroRight = document.querySelector('.hero-right');
+if (heroRight) {
+  document.addEventListener('mousemove', e => {
+    const x = (e.clientX / window.innerWidth  - 0.5) * 14;
+    const y = (e.clientY / window.innerHeight - 0.5) * 10;
+    heroRight.style.transform = `translate(${x * 0.35}px, ${y * 0.35}px)`;
+  });
+}
+
+/* ── TILT on feature cards ── */
+document.querySelectorAll('.feat-card').forEach(card => {
+  card.addEventListener('mousemove', e => {
+    const r = card.getBoundingClientRect();
+    const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+    const dx = (e.clientX - cx) / (r.width  / 2);
+    const dy = (e.clientY - cy) / (r.height / 2);
+    card.style.transform = `translateY(-7px) scale(1.01) rotateX(${-dy*4}deg) rotateY(${dx*4}deg)`;
+  });
+  card.addEventListener('mouseleave', () => {
+    card.style.transform = '';
+  });
+});
+
+/* ── RIPPLE on CTA buttons ── */
+document.querySelectorAll('.cta-main, .auth-submit, .cta-btn-white').forEach(btn => {
+  btn.addEventListener('click', function(e) {
+    const r = this.getBoundingClientRect();
+    const circle = document.createElement('span');
+    const size = Math.max(r.width, r.height);
+    circle.style.cssText = `
+      position:absolute;width:${size}px;height:${size}px;
+      left:${e.clientX - r.left - size/2}px;
+      top:${e.clientY - r.top  - size/2}px;
+      background:rgba(255,255,255,0.28);border-radius:50%;
+      transform:scale(0);animation:ripple .55s ease forwards;pointer-events:none;
+    `;
+    this.style.position = 'relative';
+    this.style.overflow = 'hidden';
+    this.appendChild(circle);
+    setTimeout(() => circle.remove(), 600);
+  });
+});
+
+/* ── inject ripple keyframe ── */
+const st = document.createElement('style');
+st.textContent = `@keyframes ripple{to{transform:scale(2.5);opacity:0}}`;
+document.head.appendChild(st);
+
+/* ── REAL LOGIN ── */
+const API_BASE = 'http://localhost:8000';
+
+async function handleLogin() {
+  const btn      = document.getElementById('loginBtn');
+  const errBox   = document.getElementById('loginError');
+  const advisorId = document.getElementById('loginAdvisorId').value.trim();
+  const password  = document.getElementById('loginPassword').value;
+
+  if (!advisorId || !password) {
+    showLoginError('Please enter your Advisor ID and password.');
+    return;
+  }
+
+  btn.textContent = 'Signing in…';
+  btn.disabled    = true;
+  errBox.style.display = 'none';
+
+  try {
+    const res = await fetch(`${API_BASE}/api/login/`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ advisor_id: advisorId, password }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Login failed');
+
+    localStorage.setItem('em_access',       data.access);
+    localStorage.setItem('em_refresh',      data.refresh);
+    localStorage.setItem('em_class_id',     data.class_id);
+    localStorage.setItem('em_advisor_id',   data.advisor_id);
+    localStorage.setItem('em_advisor_name', data.advisor_name);
+    localStorage.setItem('em_semester',     data.semester);   // ← add this
+    localStorage.setItem('em_sem_week',     data.sem_week);   // ← add this
+    btn.textContent = '✓ Success! Redirecting…';
+    setTimeout(() => { window.location.href = 'dashboard.html'; }, 600);
+  } catch (err) {
+    showLoginError(err.message || 'Could not connect to server. Is the backend running?');
+    btn.textContent = 'Sign In to EduMetrics';
+    btn.disabled    = false;
+  }
+}
+
+function showLoginError(msg) {
+  const errBox = document.getElementById('loginError');
+  errBox.textContent   = msg;
+  errBox.style.display = 'block';
+}
+
+// Allow Enter key in login form
+document.addEventListener('DOMContentLoaded', () => {
+  ['loginAdvisorId','loginPassword'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('keydown', e => { if (e.key === 'Enter') handleLogin(); });
+  });
+  // If already logged in, show a "go to dashboard" hint
+  if (localStorage.getItem('em_access')) {
+    const sub = document.querySelector('.auth-form-sub');
+    if (sub) sub.innerHTML = 'Already logged in — <a href="dashboard.html" style="color:#4e7bff;font-weight:700">go to your dashboard →</a>';
+  }
+});
+</script>
+</body>
+</html>
