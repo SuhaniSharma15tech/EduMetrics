@@ -618,6 +618,13 @@
           <div class="dm-bottom-val" id="dmRecVal"></div>
         </div>
       </div>
+      <!-- AI Analysis section — paste after dmRiskBreakdown -->
+      <div class="dm-panel" style="margin-top:16px">
+        <button class="ai-analyse-btn" onclick="runAIAnalysis()">
+          🤖 Analyse with AI
+        </button>
+        <div id="aiAnalysisPanel" style="display:none"></div>
+      </div>
       <div class="dm-actions">
         <button class="dm-action-btn primary" id="logInterventionBtn" onclick="logIntervention()">✓ Log Intervention</button>
         <button class="dm-action-btn" onclick="mailStudent()">📧 Email Student</button>
