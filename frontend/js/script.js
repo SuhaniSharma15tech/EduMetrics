@@ -156,6 +156,8 @@ function normaliseFlaggedStudents(raw) {
       reason: f.diagnosis || 'Flagged for review',
       escalation_level: f.escalation_level,
       flagHistory: [],
+      // ADD inside the return object in normaliseFlaggedStudents:
+      topSignal: f.top_signal || null,   // { key, value }
     };
   });
 }
@@ -299,6 +301,8 @@ function mergeExpandFlagIntoStudent(base, expanded) {
     factors, flagHistory,
     majorFactor: factors.length ? factors[0].label : '',
     aiSummary: expanded.student_summary || null,
+    riskBreakdown:  expanded.risk_score_breakdown  || [],
+    riskPercentiles: expanded.risk_percentiles     || null,
     etThisWeek: Math.round(evp.E_t || 0),
     perfThisWeek: Math.round(evp.A_t || 0),
     studentAvgEt: Math.round(evp.avg_effort_of_student || 0),
@@ -323,6 +327,12 @@ function riskTierToLevel(tier) {
   if (t.includes('tier 2') || t.includes('watch')) return 'med';
   if (t.includes('tier 3') || t.includes('warning')) return 'low';
   return 'safe';
+}
+
+function topFactorLabel(topSignal) {
+  if (!topSignal || !topSignal.key) return null;
+  const fn = RISK_CARD_LABEL[topSignal.key];
+  return fn ? fn(topSignal.value) : null;
 }
 
 function buildFactorsFromDiagnosis(diagnosis, totalScore) {
@@ -456,8 +466,7 @@ function buildFlaggedCards() {
     card.innerHTML = `
       <div class="flag-top-row">
         <div class="flag-identity">
-          <div class="flag-av" style="background:${r.bg};color:${r.txt};// NEW
-          width:28px;height:28px;...font-size:10px;flex-shrink:0">${s.avatar}</div>
+          <div class="flag-av" style="background:${r.bg};color:${r.txt};width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:10px;flex-shrink:0">${s.avatar}</div>
           <div>
             <div class="flag-name">${s.name}</div>
             <div class="flag-id">${s.id}</div>
@@ -467,8 +476,22 @@ function buildFlaggedCards() {
           <span class="rpd" style="background:${r.txt}"></span>${r.label}
         </span>
       </div>
-      <div class="flag-reason">${s.reason}</div>
+      <div class="flag-top-factor" style="border-left:3px solid ${r.txt}">
+        ${topFactorLabel(s.topSignal) || s.reason.split('|')[0].trim()}
       </div>
+      <div class="flag-stats-row">
+        <div class="flag-stat">
+          <div class="flag-stat-label">ATTEND.</div>
+          <div class="flag-stat-val" style="color:${s.attendance<65?'var(--red)':s.attendance<75?'var(--amber)':'var(--green)'}">${s.attendance}%</div>
+        </div>
+        <div class="flag-stat">
+          <div class="flag-stat-label">RISK</div>
+          <div class="flag-stat-val" style="color:${s.riskScore>=70?'var(--red)':s.riskScore>=45?'var(--amber)':'var(--green)'}">${s.riskScore}%</div>
+        </div>
+        <div class="flag-stat">
+          <div class="flag-stat-label">FLAGS</div>
+          <div class="flag-stat-val">${s.escalation_level || 1}</div>
+        </div>
       </div>
       <div class="flag-btn-row">
         <button class="view-btn" style="background:${r.bg};color:${r.txt};border:1px solid ${r.border}" onclick="openFlaggedDetail('${s.id}')">View Details →</button>
@@ -749,17 +772,101 @@ function openFlaggedDetailInOverlay(s) {
     fhBody.innerHTML = fh.length
       ? fh.map(f => {
           const wk = f.week||f.sem_week||'?';
-          const diag = f.diagnosis||'Flagged';
+          const diag = (f.diagnosis||'Flagged').split('|')[0].trim();
           const intBadge = f.intervened ? `<span style="background:rgba(63,185,80,0.12);color:#3fb950;border:1px solid rgba(63,185,80,0.3);font-size:9.5px;padding:2px 7px;border-radius:10px;font-weight:700">Intervened</span>` : '';
           return `<tr><td>W${wk}</td><td>${diag}</td><td>${intBadge||'—'}</td></tr>`;
         }).join('')
       : `<tr><td colspan="3" style="color:var(--txt3);font-size:12px">No flag history available</td></tr>`;
   }
 
-  const factorsEl = document.getElementById('dmFactors');
-  if (factorsEl) factorsEl.innerHTML = (s.factors||[]).map(f=>`<div class="factor-bar-row"><div class="factor-bar-top"><span class="factor-bar-label">${f.label}</span><span class="factor-bar-pct" style="color:${f.color}">${f.pct}%</span></div><div class="factor-bar-track"><div class="factor-bar-fill" style="width:${f.pct}%;background:${f.color}"></div></div></div>`).join('');
-  const majorNote = document.getElementById('dmMajorNote');
-  if (majorNote) majorNote.textContent = s.majorFactor ? `Primary driver: ${s.majorFactor}` : '';
+  
+  
+  // ── Risk Score Breakdown table + percentile strip ─────────────────────────
+  const rbEl = document.getElementById('dmRiskBreakdown');
+  if (rbEl) {
+    const bd = s.riskBreakdown || [];
+    const rp = s.riskPercentiles || null;
+    const totalScore = s.riskScore || s.avgRisk || 0;
+
+    // Table
+    const tableHTML = bd.length ? `
+      <table class="risk-bd-table">
+        <thead>
+          <tr>
+            <th>Factor</th>
+            <th title="Current measured value">Current</th>
+            <th title="Points contributed to risk score">Contributed</th>
+            <th title="Maximum possible contribution">Max</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${bd.map(row => {
+            const pct = row.max_contribution > 0 ? row.contribution / row.max_contribution : 0;
+            const barColor = pct > 0.7 ? 'var(--red)' : pct > 0.4 ? 'var(--amber)' : 'var(--green)';
+            return `<tr>
+              <td class="risk-bd-label">${row.label}</td>
+              <td class="risk-bd-val">${row.current_value}${row.unit}</td>
+              <td class="risk-bd-contrib">
+                <div class="risk-bd-bar-wrap">
+                  <div class="risk-bd-bar" style="width:${Math.round(pct*100)}%;background:${barColor}"></div>
+                </div>
+                <span>${row.contribution}</span>
+              </td>
+              <td class="risk-bd-max">${row.max_contribution}</td>
+            </tr>`;
+          }).join('')}
+          <tr class="risk-bd-total">
+            <td colspan="2"><strong>Total Risk Score</strong></td>
+            <td><strong>${totalScore}</strong></td>
+            <td><strong>100</strong></td>
+          </tr>
+        </tbody>
+      </table>` : '<p style="color:var(--txt3);font-size:12px">Breakdown unavailable</p>';
+
+    // Percentile strip
+    let stripHTML = '';
+    if (rp) {
+      const score = rp.student_score;
+      const p0 = rp.p0, p100 = rp.p100;
+      const range = Math.max(p100 - p0, 1);
+      const toPos = v => Math.round(((v - p0) / range) * 100);
+
+      const markers = [
+        { pct: toPos(rp.p0),   label: 'Min',    val: rp.p0 },
+        { pct: toPos(rp.p25),  label: 'P25',    val: rp.p25 },
+        { pct: toPos(rp.p50),  label: 'P50',    val: rp.p50 },
+        { pct: toPos(rp.p75),  label: 'P75',    val: rp.p75 },
+        { pct: toPos(rp.p100), label: 'Max',    val: rp.p100 },
+      ];
+      const studentPos = toPos(score);
+      const studentColor = score > rp.p75 ? 'var(--red)' : score > rp.p50 ? 'var(--amber)' : 'var(--green)';
+
+      stripHTML = `
+        <div class="risk-pct-section">
+          <div class="risk-pct-title">Class Risk Score Distribution
+            <span class="risk-pct-badge" style="background:${studentColor}20;color:${studentColor};border:1px solid ${studentColor}40">
+              ${rp.student_percentile}th percentile
+            </span>
+          </div>
+          <div class="risk-pct-track-wrap">
+            <div class="risk-pct-track">
+              ${markers.map(m => `
+                <div class="risk-pct-tick" style="left:${m.pct}%">
+                  <div class="risk-pct-tick-line"></div>
+                  <div class="risk-pct-tick-val">${m.val}</div>
+                  <div class="risk-pct-tick-label">${m.label}</div>
+                </div>`).join('')}
+              <div class="risk-pct-student" style="left:${studentPos}%;border-color:${studentColor}">
+                <div class="risk-pct-student-dot" style="background:${studentColor}"></div>
+                <div class="risk-pct-student-label" style="color:${studentColor}">Score: ${score}</div>
+              </div>
+            </div>
+          </div>
+        </div>`;
+    }
+
+    rbEl.innerHTML = tableHTML + stripHTML;
+  }
 
   const riskPct = s.riskFail||s.riskScore||0;
   const recPct  = s.recovery||Math.max(5,100-riskPct);
