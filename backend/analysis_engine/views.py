@@ -959,6 +959,253 @@ def expand_flag(request, flag_id):
     })
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+#  AI — student_summary_view
+#  POST /api/analysis/ai/student_summary/
+#  Body: { flag_id: int, semester: int, sem_week: int }
+#
+#  Builds student_info_json from DB then calls aiviews.student_summary_new().
+#  Returns the structured AI recommendation (intervention, talking points, briefs).
+# ─────────────────────────────────────────────────────────────────────────────
+
+@api_view(['POST'])
+def student_summary_view(request):
+    """
+    POST /api/analysis/ai/student_summary/
+    Body: { flag_id, semester, sem_week }
+
+    Returns:
+    {
+        flag_id                  : int,
+        student_id               : str,
+        student_name             : str,
+        recommended_intervention : str,   # monitor | email_student | one_to_one_check | email_parent | refer_to_counsellor
+        secondary_intervention   : str | null,
+        reasoning                : str,
+        urgency                  : str,   # low | moderate | high | critical
+        tone                     : str,   # supportive | urgent | neutral
+        talking_points           : [str],
+        email_student_brief      : str | null,
+        email_parent_brief       : str | null,
+        counsellor_brief         : str | null,
+        signals_to_highlight     : [str],
+    }
+    """
+    flag_id  = request.data.get('flag_id')
+    semester_raw = request.data.get('semester')
+    sem_week_raw = request.data.get('sem_week')
+
+    if not flag_id:
+        return Response({'error': 'flag_id is required'}, status=400)
+    if not semester_raw:
+        return Response({'error': 'semester is required'}, status=400)
+    if not sem_week_raw:
+        return Response({'error': 'sem_week is required'}, status=400)
+
+    semester = int(semester_raw)
+    sem_week = int(sem_week_raw)
+
+    # ── Fetch flag ────────────────────────────────────────────────────────────
+    try:
+        flag = weekly_flags.objects.get(id=flag_id)
+    except weekly_flags.DoesNotExist:
+        return Response({'error': f'flag_id {flag_id} not found'}, status=404)
+
+    sid = flag.student_id
+
+    # ── Student name ──────────────────────────────────────────────────────────
+    names = _name_map(flag.class_id)
+    student_name = names.get(sid, sid)
+
+    # ── Current-week metrics ──────────────────────────────────────────────────
+    m = weekly_metrics.objects.filter(
+        student_id=sid, semester=semester, sem_week=sem_week
+    ).order_by('-sem_week').first()
+
+    # ── Class averages ────────────────────────────────────────────────────────
+    cls_agg = weekly_metrics.objects.filter(
+        class_id=flag.class_id, semester=semester, sem_week=sem_week
+    ).aggregate(
+        avg_et=Avg('effort_score'),
+        avg_perf=Avg('academic_performance'),
+    )
+    class_avg_effort      = _f(cls_agg['avg_et'],   65.0)
+    class_avg_performance = _f(cls_agg['avg_perf'], 70.0)
+
+    # ── Student's rolling averages ────────────────────────────────────────────
+    # Up-to-8-week effort average
+    effort_8w_qs = list(
+        weekly_metrics.objects.filter(
+            student_id=sid, semester=semester, sem_week__lte=sem_week
+        ).order_by('-sem_week').values_list('effort_score', flat=True)[:8]
+    )
+    avg_effort_8w = round(
+        sum(_f(v) for v in effort_8w_qs) / max(len(effort_8w_qs), 1), 2
+    ) if effort_8w_qs else _f(m.effort_score if m else None)
+
+    # Last-5-week performance average
+    perf_5w_qs = list(
+        weekly_metrics.objects.filter(
+            student_id=sid, semester=semester, sem_week__lte=sem_week
+        ).order_by('-sem_week').values_list('academic_performance', flat=True)[:5]
+    )
+    avg_performance_5w = round(
+        sum(_f(v) for v in perf_5w_qs) / max(len(perf_5w_qs), 1), 2
+    ) if perf_5w_qs else _f(m.academic_performance if m else None)
+
+    # ── Exam scores ───────────────────────────────────────────────────────────
+    # midterm_score: available if week 8 < sem_week < 18
+    midterm_score = False
+    if 8 < sem_week < 18:
+        midterm_score = _get_midterm_score(sid, semester)
+
+    # endterm_score: available in even semesters weeks 4–7
+    endterm_score = False
+    if semester % 2 == 0 and 4 <= sem_week <= 7:
+        endterm_score = _get_endterm_score(sid, semester)
+
+    # ── risk_score_definition (formula description for AI context) ────────────
+    RISK_SCORE_DEF = (
+        "Composite risk score (0–100) computed as a weighted sum of: "
+        "risk_of_detention (w=30), assignment_streak (w=15), quiz_streak (w=8), "
+        "high_risk_streak (w=12), lag_score_penalty (w=10), avg_risk_3w (w=7), "
+        "avg_academic_performance_3w (w=5), avg_effort_3w (w=5), effort_drop (w=8)."
+    )
+    EFFORT_DEF = (
+        "Effort score (0–100) reflects deliberate academic behaviours weighted as: "
+        "library_visits, book_borrows, plagiarism_free_submissions, quiz_attempts, "
+        "assignment_submission_rate, and attendance. Higher = more effort."
+    )
+    ACADEMIC_PERF_DEF = (
+        "Academic performance score (0–100) derived from quiz scores and assignment "
+        "scores for the current week. Null/0 if no assessments occurred."
+    )
+    LAG_SCORE_DEF = (
+        "Lag score (0–100) measures the gap between effort invested and academic "
+        "output achieved, compared against the class average ratio. Higher = effort "
+        "is not converting into performance (comprehension gap)."
+    )
+    RISK_DETENTION_DEF = (
+        "Risk of detention (0–100) based on cumulative attendance percentage relative "
+        "to the institution's minimum attendance threshold (typically 75%)."
+    )
+
+    # ── Assemble student_info_json ────────────────────────────────────────────
+    student_info_json = {
+        "student_name":                     student_name,
+        "risk_score":                       _cap(m.risk_score if m else flag.urgency_score),
+        "risk_score_definition":            RISK_SCORE_DEF,
+        "effort":                           _f(m.effort_score if m else None),
+        "effort_definition":                EFFORT_DEF,
+        "academic_performance":             _f(m.academic_performance if m else None),
+        "academic_performance_definition":  ACADEMIC_PERF_DEF,
+        "lag_score":                        _f(getattr(m, 'lag_score', None) if m else None),
+        "lag_score_definition":             LAG_SCORE_DEF,
+        "risk_of_detention":                _f(m.risk_of_detention if m else None),
+        "risk_of_detention_definition":     RISK_DETENTION_DEF,
+        "sem_week":                         sem_week,
+        "midterm_week":                     18,
+        "endterm_week":                     19,
+        "reason_of_flagging":               flag.diagnosis or '',
+        "class_avg_effort":                 class_avg_effort,
+        "class_avg_performance":            class_avg_performance,
+        "avg_effort_8w":                    avg_effort_8w,
+        "avg_performance_5w":               avg_performance_5w,
+        "midterm_score":                    midterm_score,
+        "endterm_score":                    endterm_score,
+    }
+
+    # ── Call AI ───────────────────────────────────────────────────────────────
+    try:
+        from .aiviews import student_summary_new
+        ai_result = student_summary_new(student_info_json)
+    except Exception as exc:
+        return Response({'error': f'AI analysis failed: {exc}'}, status=500)
+
+    return Response({
+        'flag_id':                   flag_id,
+        'student_id':                sid,
+        'student_name':              student_name,
+        **ai_result,  # spreads all AI output keys directly into response
+    })
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  AI — generate_content_view
+#  POST /api/analysis/ai/generate_content/
+#  Body: { flag_id, content_type, ai_analysis, semester, sem_week }
+#
+#  Takes the ai_analysis dict returned by student_summary_view and generates
+#  the appropriate human-facing communication document.
+# ─────────────────────────────────────────────────────────────────────────────
+
+@api_view(['POST'])
+def generate_content_view(request):
+    """
+    POST /api/analysis/ai/generate_content/
+    Body: {
+        flag_id      : int,
+        content_type : "email_to_student" | "email_to_parent" |
+                       "one_to_one_conversation" | "counsellor_report",
+        ai_analysis  : { ... }   ← full dict from student_summary_view response
+        semester     : int,
+        sem_week     : int,
+    }
+
+    Returns:
+    {
+        flag_id      : int,
+        content_type : str,
+        content      : str   ← the generated document text
+    }
+    """
+    flag_id      = request.data.get('flag_id')
+    content_type = request.data.get('content_type')
+    ai_analysis  = request.data.get('ai_analysis')
+    semester_raw = request.data.get('semester')
+    sem_week_raw = request.data.get('sem_week')
+
+    VALID = {'email_to_student', 'email_to_parent', 'one_to_one_conversation', 'counsellor_report'}
+
+    if not flag_id:
+        return Response({'error': 'flag_id is required'}, status=400)
+    if not content_type or content_type not in VALID:
+        return Response({
+            'error': f'content_type must be one of: {", ".join(sorted(VALID))}'
+        }, status=400)
+    if not ai_analysis or not isinstance(ai_analysis, dict):
+        return Response({'error': 'ai_analysis (dict) is required'}, status=400)
+
+    # ── Fetch student name ────────────────────────────────────────────────────
+    student_name = ai_analysis.get('student_name', '')
+    if not student_name:
+        try:
+            flag = weekly_flags.objects.get(id=flag_id)
+            names = _name_map(flag.class_id)
+            student_name = names.get(flag.student_id, flag.student_id)
+        except weekly_flags.DoesNotExist:
+            student_name = 'Student'
+
+    # ── Call AI content generator ─────────────────────────────────────────────
+    try:
+        from .aiviews import generate_content as ai_generate_content
+        content = ai_generate_content(content_type, student_name, ai_analysis)
+    except ValueError as exc:
+        return Response({'error': str(exc)}, status=400)
+    except Exception as exc:
+        return Response({'error': f'Content generation failed: {exc}'}, status=500)
+
+    return Response({
+        'flag_id':      flag_id,
+        'content_type': content_type,
+        'content':      content,
+    })
+
+
+
+
+
+
 @api_view(['GET'])
 def last_weeks_flags(request):
     """
