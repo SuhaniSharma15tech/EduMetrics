@@ -1429,3 +1429,114 @@ body {
 [data-theme="dark"] .anl-gap-card { background: #f8fafc !important; }
 [data-theme="dark"] .anl-panel { background: #ffffff !important; border-color: rgba(0,0,0,0.07) !important; }
 [data-theme="dark"] .section-header .section-title::after { display: none !important; }
+
+
+
+/* ── Risk Score Breakdown ────────────────────────────────── */
+.risk-bd-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  margin-top: 8px;
+}
+.risk-bd-table thead th {
+  text-align: left;
+  color: var(--txt3);
+  font-weight: 600;
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--border);
+  font-size: 11px;
+}
+.risk-bd-table tbody tr:hover { background: var(--hover); }
+.risk-bd-table td {
+  padding: 5px 6px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+.risk-bd-label { color: var(--txt1); font-weight: 500; }
+.risk-bd-val   { color: var(--txt2); white-space: nowrap; }
+.risk-bd-max   { color: var(--txt3); text-align: right; }
+.risk-bd-contrib {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 100px;
+}
+.risk-bd-bar-wrap {
+  flex: 1;
+  height: 5px;
+  background: var(--border);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.risk-bd-bar {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.4s ease;
+}
+.risk-bd-total td {
+  font-size: 12.5px;
+  border-top: 2px solid var(--border);
+  border-bottom: none;
+  padding-top: 7px;
+}
+
+/* ── Percentile Strip ────────────────────────────────────── */
+.risk-pct-section   { margin-top: 14px; }
+.risk-pct-title     { font-size: 12px; font-weight: 600; color: var(--txt2); margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+.risk-pct-badge     { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 10px; }
+.risk-pct-track-wrap { padding: 28px 12px 24px; }
+.risk-pct-track     { position: relative; height: 6px; background: var(--border); border-radius: 3px; }
+.risk-pct-tick      { position: absolute; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; }
+.risk-pct-tick-line { width: 1px; height: 10px; background: var(--txt3); margin-bottom: 2px; }
+.risk-pct-tick-val  { font-size: 10px; color: var(--txt2); font-weight: 600; }
+.risk-pct-tick-label{ font-size: 9px; color: var(--txt3); margin-top: 1px; }
+.risk-pct-student   {
+  position: absolute;
+  transform: translateX(-50%);
+  top: -10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  border-left: 2px dashed;
+  height: 26px;
+}
+.risk-pct-student-dot   { width: 10px; height: 10px; border-radius: 50%; margin-top: -2px; }
+.risk-pct-student-label { font-size: 10px; font-weight: 700; white-space: nowrap; margin-top: 2px; }
+
+.flag-top-factor {
+  font-size: 13px;
+  color: var(--txt2);
+  padding: 8px 10px;
+  background: var(--hover);
+  border-radius: 6px;
+  margin: 8px 0;
+  border-left: 3px solid var(--border);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.flag-stats-row {
+  display: flex;
+  gap: 8px;
+  margin: 8px 0;
+}
+.flag-stat {
+  flex: 1;
+  background: var(--hover);
+  border-radius: 6px;
+  padding: 8px 6px;
+  text-align: center;
+}
+.flag-stat-label {
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--txt3);
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+}
+.flag-stat-val {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--txt1);
+}
