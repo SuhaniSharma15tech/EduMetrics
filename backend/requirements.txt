@@ -34,7 +34,6 @@ openai==2.31.0
 pandas==3.0.2
 proto-plus==1.27.2
 protobuf==5.29.6
-psycopg[binary]==3.2.4
 pyasn1==0.6.3
 pyasn1_modules==0.4.2
 pycparser==3.0
@@ -58,6 +57,6 @@ tzdata==2025.3
 tzlocal==5.3.1
 uritemplate==4.2.0
 urllib3==2.6.3
-psycopg2-binary==2.9.9
+psycopg[binary]
 gunicorn==21.2.0
 whitenoise==6.7.0
