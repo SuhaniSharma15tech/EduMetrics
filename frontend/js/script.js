@@ -1128,6 +1128,7 @@ async function lockIntervention() {
   setTimeout(() => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 400); }, 3000);
 }
 
+
 function mailStudent() { if (!currentStudent) return; alert(`📧 Email sent to ${currentStudent.name}`); }
 function mailParents() { if (!currentStudent) return; alert(`📧 Email sent to parents of ${currentStudent.name}`); }
 
@@ -1533,3 +1534,296 @@ function showToast(msg) {
   setTimeout(() => toast.classList.add('show'), 10);
   setTimeout(() => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 400); }, 3000);
 }
+
+
+
+
+
+
+
+
+
+// =============================================================================
+// script.js ADDITIONS
+// Paste this entire block at the bottom of js/script.js.
+// =============================================================================
+
+// ── PER-SESSION AI ANALYSIS CACHE ─────────────────────────────────────────────
+// Keyed by flag_id so repeat opens of the same card don't re-call Gemini.
+// Cleared when currentWeek changes (same place as _expandCache.clear()).
+const _aiAnalysisCache = new Map();
+
+// ── ADD to changeWeek() — one extra line inside that function: ─────────────────
+// _aiAnalysisCache.clear();
+// (Add it right after `_expandCache.clear();` in the existing changeWeek function)
+
+
+// ── INTERVENTION METADATA ──────────────────────────────────────────────────────
+// Maps AI recommendation keys → human labels and icons shown in the UI panel.
+const AI_INTERVENTION_META = {
+  monitor: {
+    icon: '👁️',
+    label: 'Monitor — No Action Yet',
+    desc: 'The AI recommends observing for another week before intervening.',
+    color: 'var(--txt3)',
+    actions: [],
+  },
+  email_student: {
+    icon: '✉️',
+    label: 'Email the Student',
+    desc: 'A check-in email is the right first step.',
+    color: 'var(--accent2)',
+    actions: [
+      { key: 'email_to_student', label: '✉️ Generate Student Email' },
+    ],
+  },
+  one_to_one_check: {
+    icon: '💬',
+    label: 'One-on-One Check-in',
+    desc: 'Schedule a face-to-face meeting with the student.',
+    color: '#58a6ff',
+    actions: [
+      { key: 'email_to_student',        label: '✉️ Email Student First' },
+      { key: 'one_to_one_conversation', label: '📋 Generate Meeting Guide' },
+    ],
+  },
+  email_parent: {
+    icon: '📞',
+    label: 'Contact Parent / Guardian',
+    desc: 'The situation warrants parental involvement.',
+    color: 'var(--amber)',
+    actions: [
+      { key: 'email_to_parent',   label: '📧 Generate Parent Email' },
+      { key: 'email_to_student',  label: '✉️ Generate Student Email' },
+    ],
+  },
+  refer_to_counsellor: {
+    icon: '🏥',
+    label: 'Refer to Counsellor',
+    desc: 'Escalate to student counselling services immediately.',
+    color: 'var(--red)',
+    actions: [
+      { key: 'counsellor_report',  label: '📄 Generate Counsellor Report' },
+      { key: 'email_to_parent',    label: '📧 Generate Parent Email' },
+      { key: 'email_to_student',   label: '✉️ Generate Student Email' },
+    ],
+  },
+};
+
+const AI_URGENCY_COLOR = {
+  low:      'var(--green)',
+  moderate: 'var(--amber)',
+  high:     'var(--amber)',
+  critical: 'var(--red)',
+};
+
+
+// ── STEP 1: "Analyse with AI" button click ────────────────────────────────────
+// Called from the flag card's "Analyse with AI" button in the detail overlay.
+// currentStudent must be set before calling.
+
+async function runAIAnalysis() {
+  const flagId = currentStudent && (currentStudent.flagId || STUDENT_TO_FLAG_ID[currentStudent.id]);
+  if (!flagId) {
+    showAIPanel({ error: 'No flag ID found for this student.' });
+    return;
+  }
+
+  // Return cached result immediately if available
+  if (_aiAnalysisCache.has(flagId)) {
+    renderAIPanel(_aiAnalysisCache.get(flagId), flagId);
+    return;
+  }
+
+  setAIPanelLoading(true);
+
+  try {
+    const result = await fetchStudentSummaryAI(flagId, SEMESTER, currentWeek);
+    _aiAnalysisCache.set(flagId, result);
+    renderAIPanel(result, flagId);
+  } catch (err) {
+    renderAIPanel({ error: err.message || 'AI analysis failed. Please try again.' }, flagId);
+  } finally {
+    setAIPanelLoading(false);
+  }
+}
+
+
+// ── STEP 2: Render AI analysis panel ──────────────────────────────────────────
+
+function setAIPanelLoading(isLoading) {
+  const panel = document.getElementById('aiAnalysisPanel');
+  if (!panel) return;
+  panel.style.display = 'block';
+  if (isLoading) {
+    panel.innerHTML = `
+      <div class="ai-panel-loading">
+        <div class="api-spinner"></div>
+        <span>Analysing with AI…</span>
+      </div>`;
+  }
+}
+
+function renderAIPanel(result, flagId) {
+  const panel = document.getElementById('aiAnalysisPanel');
+  if (!panel) return;
+  panel.style.display = 'block';
+
+  if (result.error) {
+    panel.innerHTML = `<div class="api-error" style="margin:0">⚠ ${result.error}</div>`;
+    return;
+  }
+
+  const intervention = result.recommended_intervention || 'monitor';
+  const meta = AI_INTERVENTION_META[intervention] || AI_INTERVENTION_META.monitor;
+  const urgency = result.urgency || 'moderate';
+  const urgencyColor = AI_URGENCY_COLOR[urgency] || 'var(--amber)';
+  const secondary = result.secondary_intervention;
+  const secMeta = secondary ? (AI_INTERVENTION_META[secondary] || null) : null;
+
+  // Talking points HTML
+  const talkingPointsHTML = (result.talking_points || []).length
+    ? `<div class="ai-section-label">Key Talking Points</div>
+       <ul class="ai-talking-points">
+         ${(result.talking_points || []).map(pt => `<li>${pt}</li>`).join('')}
+       </ul>`
+    : '';
+
+  // Action buttons for generating content
+  const actionsHTML = meta.actions.length
+    ? `<div class="ai-section-label" style="margin-top:12px">Generate Communication</div>
+       <div class="ai-action-btns">
+         ${meta.actions.map(a => `
+           <button class="ai-action-btn" onclick="generateAIContent('${a.key}', ${flagId})">
+             ${a.label}
+           </button>`).join('')}
+         ${secMeta && secMeta.actions.length
+           ? secMeta.actions.map(a => `
+               <button class="ai-action-btn ai-action-btn--secondary"
+                       onclick="generateAIContent('${a.key}', ${flagId})">
+                 ${a.label}
+               </button>`).join('')
+           : ''}
+       </div>`
+    : '';
+
+  panel.innerHTML = `
+    <div class="ai-panel-header">
+      <span class="ai-panel-title">🤖 AI Analysis</span>
+      <span class="ai-urgency-badge" style="background:${urgencyColor}22;color:${urgencyColor};border:1px solid ${urgencyColor}44">
+        ${urgency.charAt(0).toUpperCase() + urgency.slice(1)} Urgency
+      </span>
+    </div>
+
+    <div class="ai-recommendation-box" style="border-left:3px solid ${meta.color}">
+      <div class="ai-rec-icon">${meta.icon}</div>
+      <div class="ai-rec-content">
+        <div class="ai-rec-label" style="color:${meta.color}">${meta.label}</div>
+        ${secondary && secMeta
+          ? `<div class="ai-rec-secondary">Also consider: <strong>${secMeta.label}</strong></div>`
+          : ''}
+        <div class="ai-rec-desc">${meta.desc}</div>
+      </div>
+    </div>
+
+    <div class="ai-reasoning">
+      <div class="ai-section-label">Reasoning</div>
+      <p class="ai-reasoning-text">${result.reasoning || '—'}</p>
+    </div>
+
+    ${talkingPointsHTML}
+    ${actionsHTML}
+
+    <div id="aiContentOutput" style="display:none"></div>
+  `;
+}
+
+
+// ── STEP 3: Generate a specific document ──────────────────────────────────────
+
+async function generateAIContent(contentType, flagId) {
+  const ai_analysis = _aiAnalysisCache.get(flagId);
+  if (!ai_analysis) {
+    alert('Please run AI analysis first.');
+    return;
+  }
+
+  const outputEl = document.getElementById('aiContentOutput');
+  if (!outputEl) return;
+
+  outputEl.style.display = 'block';
+  outputEl.innerHTML = `
+    <div class="ai-panel-loading" style="margin-top:12px">
+      <div class="api-spinner"></div>
+      <span>Generating ${contentType.replace(/_/g, ' ')}…</span>
+    </div>`;
+
+  try {
+    const result = await fetchGenerateContent(flagId, contentType, ai_analysis, SEMESTER, currentWeek);
+    renderGeneratedContent(result, outputEl);
+  } catch (err) {
+    outputEl.innerHTML = `<div class="api-error" style="margin-top:8px">⚠ ${err.message || 'Generation failed'}</div>`;
+  }
+}
+
+function renderGeneratedContent(result, container) {
+  const typeLabel = (result.content_type || '').replace(/_/g, ' ')
+    .replace(/\b\w/g, c => c.toUpperCase());
+
+  container.innerHTML = `
+    <div class="ai-content-output">
+      <div class="ai-content-header">
+        <span class="ai-content-type-label">${typeLabel}</span>
+        <button class="ai-copy-btn" onclick="copyAIContent(this)">📋 Copy</button>
+      </div>
+      <pre class="ai-content-body">${escapeHtml(result.content || '')}</pre>
+    </div>`;
+}
+
+function copyAIContent(btn) {
+  const pre = btn.closest('.ai-content-output').querySelector('.ai-content-body');
+  if (!pre) return;
+  navigator.clipboard.writeText(pre.textContent).then(() => {
+    btn.textContent = '✓ Copied!';
+    setTimeout(() => { btn.textContent = '📋 Copy'; }, 2000);
+  });
+}
+
+function escapeHtml(str) {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+
+// =============================================================================
+// INTEGRATION NOTES
+// =============================================================================
+//
+// 1. In buildFlaggedCards() — add the "Analyse with AI" button to each flag card's
+//    flag-btn-row, right after the "View Details →" button:
+//
+//      <div class="flag-btn-row">
+//        <button class="view-btn" ... onclick="openFlaggedDetail('${s.id}')">View Details →</button>
+//        <button class="ai-btn" onclick="openFlaggedDetailAndAnalyse('${s.id}')">🤖 Analyse with AI</button>
+//      </div>
+//
+// 2. Add the helper function below to open the detail AND immediately trigger AI:
+//
+//    async function openFlaggedDetailAndAnalyse(studentId) {
+//      await openFlaggedDetail(studentId);   // existing function — opens overlay
+//      runAIAnalysis();                       // immediately trigger AI panel
+//    }
+//
+// 3. In dashboard.html — add these to the flagged-student detail overlay (#overlay),
+//    just below the risk score breakdown section:
+//
+//    <button class="ai-analyse-btn" onclick="runAIAnalysis()">🤖 Analyse with AI</button>
+//    <div id="aiAnalysisPanel" style="display:none"></div>
+//
+// 4. In changeWeek() — add: _aiAnalysisCache.clear();  after _expandCache.clear();
+//
+// =============================================================================
