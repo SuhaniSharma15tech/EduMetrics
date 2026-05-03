@@ -419,10 +419,15 @@ def weekly_flags_view(request):
     {
         flag1: {
             student_id, student_name, risk_tier, diagnosis,
-            attendance_pct, risk_score, escalation_level
+            attendance_pct, risk_score, escalation_level,
+            top_signal: { key, value }   ← most-saturated signal for card face
         },
         ...
     }
+
+    top_signal saturation = current_raw_value / max_possible_raw_value.
+    The signal closest to its ceiling wins and is shown on the card face.
+    Labels are rendered by RISK_CARD_LABEL in api.js (no extra round-trip).
     """
     params, err = _require(request, 'class_id', 'semester', 'sem_week')
     if err:
@@ -432,19 +437,15 @@ def weekly_flags_view(request):
     semester = int(params['semester'])
     sem_week = int(params['sem_week'])
 
-    flags = weekly_flags.objects.filter(
-        class_id=class_id, semester=semester, sem_week=sem_week
-    ).order_by('-urgency_score')
+    flags = list(
+        weekly_flags.objects.filter(
+            class_id=class_id, semester=semester, sem_week=sem_week
+        ).order_by('-urgency_score')
+    )
 
-    names = _name_map(class_id)
-    result = {}
-
-    flags = weekly_flags.objects.filter(
-    class_id=class_id, semester=semester, sem_week=sem_week
-    ).order_by('-urgency_score')
-    
-    # ✅ FIX: Fetch ALL metrics in ONE query instead of one per student
     student_ids = [f.student_id for f in flags]
+
+    # ── Current-week metrics (attendance, risk_score, escalation) ─────────────
     metrics_map = {
         m.student_id: m
         for m in weekly_metrics.objects.filter(
@@ -452,28 +453,146 @@ def weekly_flags_view(request):
         )
     }
 
-    names = _name_map(class_id)
+    # ── Prior-window metrics for streak / trend signals ───────────────────────
+    # Up to 3 teaching weeks before sem_week, skipping exam weeks (8, 18).
+    EXAM_WEEKS = {8, 18}
+    prior_weeks = []
+    w = sem_week - 1
+    while w >= 1 and len(prior_weeks) < 3:
+        if w not in EXAM_WEEKS:
+            prior_weeks.append(w)
+        w -= 1
+    prior_weeks_desc = prior_weeks   # already descending (most-recent first)
+
+    # Bulk fetch: one query for all students × all prior weeks
+    prior_metrics_map = {}   # { student_id: { sem_week: row_dict } }
+    for pm in weekly_metrics.objects.filter(
+        student_id__in=student_ids,
+        semester=semester,
+        sem_week__in=prior_weeks,
+    ).values(
+        'student_id', 'sem_week',
+        'assn_submit_rate', 'quiz_attempt_rate',
+        'risk_score', 'effort_score', 'academic_performance',
+        'risk_of_detention',
+    ):
+        prior_metrics_map \
+            .setdefault(pm['student_id'], {}) \
+            [pm['sem_week']] = pm
+
+    # ── Top-signal helper ─────────────────────────────────────────────────────
+
+    def _top_signal(sid, current_m):
+        """
+        For each signal compute saturation = current_raw / max_raw ∈ [0, 1].
+        Return (key, display_value) for the signal with the highest saturation.
+
+        Signals and their max raw values:
+          risk_of_detention  → raw ∈ [0, 100],  max = 100
+          assn_streak        → streak ∈ {0,1,2,3}, max = 3
+          quiz_streak        → streak ∈ {0,1,2,3}, max = 3
+          high_risk_streak   → count ∈ {0,1,2,3}, max = 3
+          et_drop            → pp drop ∈ [0, 100], max = 100
+          avg_at_3w          → inverted avg A_t; low perf = high signal
+          avg_et_3w          → inverted avg E_t; low effort = high signal
+        """
+        pw = prior_metrics_map.get(sid, {})
+        rows = [pw[wk] for wk in prior_weeks_desc if wk in pw]
+
+        # a. risk_of_detention (current week)
+        rod_raw = _f(current_m.risk_of_detention if current_m else None)
+
+        # b. assignment streak (consecutive from most-recent)
+        assn_streak = 0
+        for row in rows:
+            rate = row.get('assn_submit_rate')
+            if rate is not None and _f(rate) < 1.0:
+                assn_streak += 1
+            else:
+                break
+
+        # c. quiz streak
+        quiz_streak = 0
+        for row in rows:
+            rate = row.get('quiz_attempt_rate')
+            if rate is not None and _f(rate) < 1.0:
+                quiz_streak += 1
+            else:
+                break
+
+        # d. high-risk streak (risk_score >= 50 anywhere in window)
+        high_risk_count = sum(
+            1 for row in rows
+            if row.get('risk_score') is not None and row['risk_score'] >= 50
+        )
+
+        # e. E_t drop (oldest minus newest, clipped at 0)
+        et_vals = [
+            _f(row['effort_score'])
+            for row in rows
+            if row.get('effort_score') is not None
+        ]
+        et_drop = max(0.0, et_vals[-1] - et_vals[0]) if len(et_vals) >= 2 else 0.0
+
+        # f. avg A_t inverted (low performance = high signal)
+        at_vals = [
+            _f(row['academic_performance'])
+            for row in rows
+            if row.get('academic_performance') is not None
+        ]
+        avg_at = round(sum(at_vals) / len(at_vals), 1) if at_vals else None
+        avg_at_signal = max(0.0, 100.0 - avg_at) if avg_at is not None else 0.0
+
+        # g. avg E_t inverted (low effort = high signal)
+        et_eff_vals = [
+            _f(row['effort_score'])
+            for row in rows
+            if row.get('effort_score') is not None
+        ]
+        avg_et = round(sum(et_eff_vals) / len(et_eff_vals), 1) if et_eff_vals else None
+        avg_et_signal = max(0.0, 100.0 - avg_et) if avg_et is not None else 0.0
+
+        # Saturation table: (saturation_ratio, display_value)
+        candidates = {
+            'risk_of_detention': (rod_raw / 100.0,        round(rod_raw, 1)),
+            'assn_streak':       (assn_streak / 3.0,       assn_streak),
+            'quiz_streak':       (quiz_streak / 3.0,       quiz_streak),
+            'high_risk_streak':  (high_risk_count / 3.0,   high_risk_count),
+            'et_drop':           (et_drop / 100.0,         round(et_drop, 1)),
+            'avg_at_3w':         (avg_at_signal / 100.0,   avg_at if avg_at is not None else 0),
+            'avg_et_3w':         (avg_et_signal / 100.0,   avg_et if avg_et is not None else 0),
+        }
+
+        best_key = max(candidates, key=lambda k: candidates[k][0])
+        saturation, display_val = candidates[best_key]
+
+        return {
+            'key':        best_key,
+            'value':      display_val,
+            'saturation': round(saturation * 100, 1),  # % of max, useful for debugging
+        }
+
+    # ── Build response ────────────────────────────────────────────────────────
+    names  = _name_map(class_id)
     result = {}
 
     for i, flag in enumerate(flags, start=1):
-        sid = flag.student_id
-        m = metrics_map.get(sid)
+        sid    = flag.student_id
+        m      = metrics_map.get(sid)
 
         result[f'flag{i}'] = {
-            'id':flag.id,
-            'student_id':       sid,
-            'student_name':     names.get(sid, sid),
-            'risk_tier':        flag.risk_tier,
-            'diagnosis':        flag.diagnosis,
-            'attendance_pct':   round(_f(m.overall_att_pct if m else None), 1),
-
-            # NOW coming from weekly_metrics
-            'risk_score':       _cap(m.risk_score if m else None),
+            'id':              flag.id,
+            'student_id':      sid,
+            'student_name':    names.get(sid, sid),
+            'risk_tier':       flag.risk_tier,
+            'diagnosis':       flag.diagnosis,
+            'attendance_pct':  round(_f(m.overall_att_pct if m else None), 1),
+            'risk_score':      _cap(m.risk_score if m else None),
             'escalation_level': m.escalation_level if m else 0,
+            'top_signal':      _top_signal(sid, m),
         }
 
     return Response(result)
-
 
 @api_view(['GET'])
 def expand_flag(request, flag_id):
@@ -644,20 +763,199 @@ def expand_flag(request, flag_id):
         for part in parts
     }
 
+    # ── Risk score breakdown ──────────────────────────────────────────────────────
+    # Weights are static (match flagging.py WEIGHTS exactly)
+    RISK_WEIGHTS = {
+        'risk_of_detention': 30,
+        'assn_streak':       15,
+        'quiz_streak':        8,
+        'high_risk_streak':  12,
+        'lag_score_penalty': 10,
+        'avg_risk_score_3w':  7,
+        'avg_at_3w':          5,
+        'avg_et_3w':          5,
+        'et_drop':            8,
+    }
+
+    # Pull current-week raw values for each signal
+    # risk_of_detention current raw value
+    rod_raw    = _f(m.risk_of_detention if m else None)
+    rod_signal = (rod_raw / 100.0) ** 2 * 100.0          # convex
+
+    # assn_streak: read from assn_submit_rate of last 3 weeks
+    window_wks = sorted(
+        [r['sem_week'] for r in traj if r['sem_week'] < (sem_week or flag.sem_week)],
+        reverse=True
+    )[:3]
+    traj_map_local = {r['sem_week']: r for r in traj}
+
+    assn_streak_count = 0
+    for wk in window_wks:
+        row = traj_map_local.get(wk, {})
+        rate = _f(row.get('assn_submit_rate') if isinstance(row, dict) else None, default=None)
+        if rate is not None and rate < 1.0:
+            assn_streak_count += 1
+        else:
+            break
+    assn_streak_signal = min(assn_streak_count, 3) / 3 * 100
+
+    quiz_streak_count = 0
+    for wk in window_wks:
+        row = traj_map_local.get(wk, {})
+        rate = _f(row.get('quiz_attempt_rate') if isinstance(row, dict) else None, default=None)
+        if rate is not None and rate < 1.0:
+            quiz_streak_count += 1
+        else:
+            break
+    quiz_streak_signal = min(quiz_streak_count, 3) / 3 * 100
+
+    # high_risk_streak: weeks in window with risk_score >= 50
+    HIGH_RISK_THRESHOLD = 50
+    high_risk_wm = weekly_metrics.objects.filter(
+        student_id=sid, semester=semester, sem_week__in=window_wks
+    ).values_list('risk_score', flat=True)
+    high_risk_count = sum(1 for rs in high_risk_wm if rs is not None and rs >= HIGH_RISK_THRESHOLD)
+    high_risk_ratio = min(high_risk_count, 3) / 3
+    high_risk_signal = high_risk_ratio ** 2 * 100
+
+    # lag_score_penalty (read from traj)
+    traj_wm = weekly_metrics.objects.filter(
+        student_id=sid, semester=semester, sem_week__in=window_wks
+    ).values('effort_score', 'academic_performance')
+    ats = [_f(r['academic_performance']) for r in traj_wm if r['academic_performance'] is not None and _f(r['effort_score']) > 0]
+    ets = [_f(r['effort_score'])         for r in traj_wm if r['effort_score'] is not None and _f(r['effort_score']) > 0]
+    if ats and ets and class_avg_et > 0:
+        student_ratio = (sum(ats)/len(ats)) / (sum(ets)/len(ets))
+        class_ratio   = class_avg_perf / class_avg_et
+        lag_signal    = min(max(0.0, 1.0 - (student_ratio / class_ratio)) * 100, 100) if class_ratio > 0 else 0.0
+    else:
+        lag_signal = 0.0
+
+    # avg_risk_score_3w: plain avg of prior risk_scores in window
+    prior_rs = list(weekly_metrics.objects.filter(
+        student_id=sid, semester=semester, sem_week__in=window_wks
+    ).values_list('risk_score', flat=True))
+    prior_rs_vals = [float(rs) for rs in prior_rs if rs is not None]
+    avg_rs_signal = sum(prior_rs_vals) / len(prior_rs_vals) if prior_rs_vals else 0.0
+
+    # avg_at_3w and avg_et_3w (inverted)
+    at_vals = [_f(r['academic_performance']) for r in traj if r['sem_week'] in window_wks and r['academic_performance'] is not None]
+    et_vals = [_f(r['effort_score'])         for r in traj if r['sem_week'] in window_wks and r['effort_score'] is not None]
+    avg_at_signal = max(0.0, 100.0 - (sum(at_vals)/len(at_vals))) if at_vals else 0.0
+    avg_et_signal = max(0.0, 100.0 - (sum(et_vals)/len(et_vals))) if et_vals else 0.0
+
+    # et_drop: oldest - newest E_t
+    et_ordered = [_f(r['effort_score']) for r in sorted(traj, key=lambda x: x['sem_week']) if r.get('effort_score') is not None]
+    et_drop_signal = max(0.0, et_ordered[-1] - et_ordered[0]) if len(et_ordered) >= 2 else 0.0
+
+    SIGNALS = {
+        'risk_of_detention': rod_signal,
+        'assn_streak':       assn_streak_signal,
+        'quiz_streak':       quiz_streak_signal,
+        'high_risk_streak':  high_risk_signal,
+        'lag_score_penalty': lag_signal,
+        'avg_risk_score_3w': avg_rs_signal,
+        'avg_at_3w':         avg_at_signal,
+        'avg_et_3w':         avg_et_signal,
+        'et_drop':           et_drop_signal,
+    }
+
+    DISPLAY_LABELS = {
+        'risk_of_detention': 'Risk of Detention',
+        'assn_streak':       'Missed Assignment Streak',
+        'quiz_streak':       'Missed Quiz Streak',
+        'high_risk_streak':  'Weeks at High Risk (≥50)',
+        'lag_score_penalty': 'Effort→Performance Gap',
+        'avg_risk_score_3w': 'Avg Risk Score (3w)',
+        'avg_at_3w':         'Avg Academic Performance (3w)',
+        'avg_et_3w':         'Avg Effort Score (3w)',
+        'et_drop':           'Effort Drop',
+    }
+
+    CURRENT_VALUES = {
+        'risk_of_detention': round(rod_raw, 1),
+        'assn_streak':       assn_streak_count,
+        'quiz_streak':       quiz_streak_count,
+        'high_risk_streak':  high_risk_count,
+        'lag_score_penalty': round(lag_signal, 1),
+        'avg_risk_score_3w': round(avg_rs_signal, 1),
+        'avg_at_3w':         round(100 - avg_at_signal, 1),   # show actual avg, not inverted
+        'avg_et_3w':         round(100 - avg_et_signal, 1),   # same
+        'et_drop':           round(et_drop_signal, 1),
+    }
+
+    CURRENT_UNITS = {
+        'risk_of_detention': '/100',
+        'assn_streak':       ' week(s)',
+        'quiz_streak':       ' week(s)',
+        'high_risk_streak':  ' week(s)',
+        'lag_score_penalty': '/100',
+        'avg_risk_score_3w': '/100',
+        'avg_at_3w':         '/100',
+        'avg_et_3w':         '/100',
+        'et_drop':           ' pp',
+    }
+
+    risk_score_breakdown = [
+        {
+            'key':                 key,
+            'label':               DISPLAY_LABELS[key],
+            'weight':              RISK_WEIGHTS[key],
+            'signal':              round(SIGNALS[key], 1),
+            'contribution':        round(RISK_WEIGHTS[key] * SIGNALS[key] / 100, 1),
+            'max_contribution':    RISK_WEIGHTS[key],
+            'current_value':       CURRENT_VALUES[key],
+            'unit':                CURRENT_UNITS[key],
+        }
+        for key in RISK_WEIGHTS
+    ]
+
+    # ── Class-level percentile distribution for this week ────────────────────────
+    all_risk_scores = list(
+        weekly_metrics.objects.filter(
+            class_id=flag.class_id, semester=semester,
+            sem_week=(sem_week or flag.sem_week),
+        ).exclude(risk_score__isnull=True)
+        .values_list('risk_score', flat=True)
+    )
+    all_risk_scores_sorted = sorted(all_risk_scores)
+    n_class = len(all_risk_scores_sorted)
+
+    def _percentile_val(sorted_list, pct):
+        if not sorted_list: return 0
+        idx = int(len(sorted_list) * pct / 100)
+        return float(sorted_list[min(idx, len(sorted_list)-1)])
+
+    student_risk_score = m.risk_score if m and m.risk_score is not None else flag.urgency_score
+    students_below = sum(1 for rs in all_risk_scores if rs < student_risk_score)
+    student_percentile = round(students_below / max(n_class, 1) * 100, 1)
+
+    risk_percentiles = {
+        'p25':                round(_percentile_val(all_risk_scores_sorted, 25), 1),
+        'p50':                round(_percentile_val(all_risk_scores_sorted, 50), 1),
+        'p75':                round(_percentile_val(all_risk_scores_sorted, 75), 1),
+        'p100':               float(all_risk_scores_sorted[-1]) if all_risk_scores_sorted else 0,
+        'p0':                 float(all_risk_scores_sorted[0])  if all_risk_scores_sorted else 0,
+        'student_score':      float(student_risk_score or 0),
+        'student_percentile': student_percentile,
+    }
+
     return Response({
         'student_overview': {
-            'avg_risk_score':            _cap(flag.urgency_score),
-            'avg_effort':                avg_effort,
-            'avg_academic_performance':  avg_performance,
-            'overall_attendance':        overall_att,
-            'risk_of_detention':         risk_detention,
-            'mid_term_score':            midterm_score,
+            'avg_risk_score':           _cap(flag.urgency_score),
+            'avg_effort':               avg_effort,
+            'avg_academic_performance': avg_performance,
+            'overall_attendance':       overall_att,
+            'risk_of_detention':        risk_detention,
+            'mid_term_score':           midterm_score,
         },
-        'student_summary':    ai_summary,
-        'flagging_history':   flagging_history,
-        'trends':             trends,
+        'student_summary':       ai_summary,
+        'flagging_history':      flagging_history,
+        'trends':                trends,
         'effort_vs_performance': effort_vs_performance,
         'flagging_contributors': flagging_contributors,
+        'risk_score_breakdown':  risk_score_breakdown,
+        'risk_percentiles':      risk_percentiles,
     })
 
 
