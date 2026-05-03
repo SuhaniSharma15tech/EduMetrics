@@ -255,6 +255,39 @@ async function logInterventionAPI(flag_id, intervention) {
   });
 }
 
+
+
+// ── AI — student_summary (on-demand, NOT cached — always fresh AI call) ───────
+//
+// Returns the AI recommendation for a flagged student:
+// { recommended_intervention, secondary_intervention, reasoning, urgency,
+//   tone, talking_points, email_student_brief, email_parent_brief,
+//   counsellor_brief, signals_to_highlight, student_name, student_id, flag_id }
+//
+// The result should be stored in script.js (_aiAnalysisCache) keyed by flag_id
+// so repeat opens of the same flag card don't re-fire the Gemini call.
+
+function fetchStudentSummaryAI(flag_id, semester, sem_week) {
+  return apiFetch('/api/analysis/ai/student_summary/', {
+    method: 'POST',
+    body: JSON.stringify({ flag_id, semester, sem_week }),
+  });
+}
+
+// ── AI — generate_content (on-demand, NOT cached — content may be regenerated) ─
+//
+// content_type: "email_to_student" | "email_to_parent" |
+//               "one_to_one_conversation" | "counsellor_report"
+// ai_analysis : the full object returned by fetchStudentSummaryAI()
+//
+// Returns: { flag_id, content_type, content }
+
+function fetchGenerateContent(flag_id, content_type, ai_analysis, semester, sem_week) {
+  return apiFetch('/api/analysis/ai/generate_content/', {
+    method: 'POST',
+    body: JSON.stringify({ flag_id, content_type, ai_analysis, semester, sem_week }),
+  });
+}
 // ── STUDENTS ──────────────────────────────────────────────────────────────────
 
 function fetchAllStudents(class_id, semester, sem_week) {
