@@ -57,6 +57,7 @@ from .views import (
 
     # ── Internal ────────────────────────────────────────────────────────────
     trigger_calibrate,
+    calibrate_status,
 )
 
 urlpatterns = [
