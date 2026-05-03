@@ -1524,9 +1524,13 @@ def post_endterm_report(request):
 #  INTERNAL
 # ─────────────────────────────────────────────────────────────────────────────
 
+import threading
+
+_calibration_status = {"running": False, "result": None, "error": None}
+
 @csrf_exempt
 def trigger_calibrate(request):
-    """POST /api/analysis/trigger_calibrate/"""
+    """POST /api/analysis/calibrate/"""
     if request.method != 'POST':
         return JsonResponse({'error': 'Method not allowed'}, status=405)
 
@@ -1535,11 +1539,33 @@ def trigger_calibrate(request):
     if secret and provided_secret != secret:
         return JsonResponse({'error': 'forbidden'}, status=403)
 
-    try:
-        result = calibrate()
-        from accounts.addingdata import sync
-        sync()
-        return JsonResponse(result, status=200)
-    except Exception as e:
-        print(f'[FATAL] calibrate() raised:\n{traceback.format_exc()}')
-        return JsonResponse({'error': str(e)}, status=500)
+    if _calibration_status["running"]:
+        return JsonResponse({"status": "already_running"}, status=202)
+
+    def run():
+        _calibration_status["running"] = True
+        _calibration_status["result"]  = None
+        _calibration_status["error"]   = None
+        try:
+            result = calibrate()
+            from accounts.addingdata import sync
+            sync()
+            _calibration_status["result"] = result
+        except Exception as e:
+            print(f'[FATAL] calibrate() raised:\n{traceback.format_exc()}')
+            _calibration_status["error"] = str(e)
+        finally:
+            _calibration_status["running"] = False
+
+    threading.Thread(target=run, daemon=True).start()
+    return JsonResponse({"status": "started"}, status=202)
+
+
+@csrf_exempt
+def calibrate_status(request):
+    """GET /api/analysis/calibrate/status/"""
+    return JsonResponse({
+        "running": _calibration_status["running"],
+        "result":  _calibration_status["result"],
+        "error":   _calibration_status["error"],
+    })
