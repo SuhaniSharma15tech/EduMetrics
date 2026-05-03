@@ -47,6 +47,8 @@ from .views import (
     all_students,
     detainment_risk,
     student_detail,
+    student_summary_view,
+    generate_content_view,
 
     # ── NEW: Reports ────────────────────────────────────────────────────────
     pre_midterm_report,
@@ -113,6 +115,11 @@ urlpatterns = [
 
     # GET /api/analysis/reports/post_endterm/?class_id=X&semester=Y
     path('reports/post_endterm/', post_endterm_report, name='post_endterm_report'),
+
+    
+    path('ai/student_summary/',  student_summary_view,  name='ai_student_summary'),
+    path('ai/generate_content/', generate_content_view, name='ai_generate_content'),
+
 
 
     # ── Internal ──────────────────────────────────────────────────────────────
