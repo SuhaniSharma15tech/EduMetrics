@@ -3,6 +3,46 @@
 
 const API_BASE = 'https://edumetrics-wswe.onrender.com';
 
+// ── RISK SCORE WEIGHTS (mirrors flagging.py WEIGHTS exactly) ─────────────────
+// Stored here once so any page can reference it without an API call.
+const RISK_WEIGHTS = Object.freeze({
+  risk_of_detention: 30,
+  assn_streak:       15,
+  quiz_streak:        8,
+  high_risk_streak:  12,
+  lag_score_penalty: 10,
+  avg_risk_score_3w:  7,
+  avg_at_3w:          5,
+  avg_et_3w:          5,
+  et_drop:            8,
+});
+
+// Max possible raw value for each signal (used to compute saturation on card face)
+const RISK_MAX_RAW = Object.freeze({
+  risk_of_detention: 100,   // raw detention score out of 100
+  assn_streak:         3,   // streak capped at 3 weeks
+  quiz_streak:         3,
+  high_risk_streak:    3,
+  lag_score_penalty: 100,   // signal already 0-100
+  avg_risk_score_3w: 100,
+  avg_at_3w:         100,   // inverted; 0 performance = 100 signal
+  avg_et_3w:         100,
+  et_drop:           100,   // pp drop max 100
+});
+
+// Human-readable card label for each signal key
+const RISK_CARD_LABEL = Object.freeze({
+  risk_of_detention: v => `Detention risk: ${v}/100`,
+  assn_streak:       v => `${v} assignment${v>1?'s':''} missed in a row`,
+  quiz_streak:       v => `${v} quiz${v>1?'zes':''} missed in a row`,
+  high_risk_streak:  v => `${v} week${v>1?'s':''} at high risk`,
+  lag_score_penalty: v => `Effort not converting (gap: ${v})`,
+  avg_risk_score_3w: v => `Avg risk score over past 3 weeks: ${v}/100`,
+  avg_at_3w:         v => `Low avg performance: ${v}/100`,
+  avg_et_3w:         v => `Low avg effort: ${v}/100`,
+  et_drop:           v => `Effort dropped ${v}pp`,
+});
+
 // ── TOKEN MANAGEMENT ──────────────────────────────────────────────────────────
 
 function getAccessToken()  { return localStorage.getItem('em_access'); }
@@ -248,3 +288,6 @@ function fetchPreEndtermReport(class_id, semester) {
 function fetchPostEndtermReport(class_id, semester) {
   return _cachedApiFetch(`/api/analysis/reports/post_endterm/${qs({ class_id, semester })}`);
 }
+
+
+
