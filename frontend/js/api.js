@@ -1,7 +1,7 @@
 // EduMetrics — js/api.js
 // JWT-authenticated API client  (performance-optimised)
 
-const API_BASE = 'https://edumetrics-xxxx.onrender.com';
+const API_BASE = 'https://edumetrics-wswe.onrender.com';
 
 // ── TOKEN MANAGEMENT ──────────────────────────────────────────────────────────
 
