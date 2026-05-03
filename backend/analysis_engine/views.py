@@ -1537,6 +1537,8 @@ def trigger_calibrate(request):
 
     try:
         result = calibrate()
+        from accounts.addingdata import sync
+        sync()
         return JsonResponse(result, status=200)
     except Exception as e:
         print(f'[FATAL] calibrate() raised:\n{traceback.format_exc()}')
