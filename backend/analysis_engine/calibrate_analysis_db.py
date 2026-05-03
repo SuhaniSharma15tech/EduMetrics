@@ -449,56 +449,37 @@ def _advance_analysis_db(from_global_week, to_global_week, classes):
 # ══════════════════════════════════════════════════════════════
 
 # NOTE: checked
-def calibrate():
-    """
-    Synchronise the analysis DB with the client DB.
+import threading
+from django.http import JsonResponse
+from .calibrate_analysis_db import calibrate
 
-    Called by trigger_calibrate() in views.py, which is in turn hit by
-    the simulator (app.py / Streamlit) after every advance_week() or
-    rollback_to_week(). Blocks until all scripts have committed, then
-    returns a summary dict that views.py serialises as JSON.
-    """
-    
-    t_start = time.monotonic()
-    print(f"\n{'='*60}")
-    print(f"  calibrate_analysis_db  —  {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    print(f"{'='*60}")
+_calibration_status = {"running": False, "result": None, "error": None}
 
-    client   = _get_client_state()
-    analysis = _get_analysis_state()
+def trigger_calibrate(request):
+    if request.method != 'POST':
+        return JsonResponse({"error": "POST required"}, status=405)
 
-    
-    client_gw   = client['global_week']
-    analysis_gw = analysis['global_week']
+    if _calibration_status["running"]:
+        return JsonResponse({"status": "already_running"}, status=202)
 
-    print(f'  Client DB   → global week {client_gw}')
-    print(f'  Analysis DB → global week {analysis_gw}')
+    def run():
+        _calibration_status["running"] = True
+        _calibration_status["result"]  = None
+        _calibration_status["error"]   = None
+        try:
+            _calibration_status["result"] = calibrate()
+        except Exception as e:
+            _calibration_status["error"] = str(e)
+        finally:
+            _calibration_status["running"] = False
 
-    result = {
-        'client_week':     client_gw,
-        'analysis_week':   analysis_gw,
-        'action':          None,
-        'weeks_processed': 0,
-        'elapsed_ms':      0,
-    }
+    threading.Thread(target=run, daemon=True).start()
+    return JsonResponse({"status": "started"}, status=202)
 
-    if client_gw == analysis_gw:
-        print('  Already in sync. Nothing to do.')
-        result['action'] = 'no_op'
 
-    elif client_gw < analysis_gw:
-        result['action'] = 'rollback'
-        _rollback_analysis_db(client_gw)
-
-    else:
-        result['action']          = 'advance'
-        result['weeks_processed'] = client_gw - analysis_gw
-        print(f"  Gap: {result['weeks_processed']} week(s) to process")
-        _advance_analysis_db(analysis_gw, client_gw, client['classes'])
-
-    elapsed = int((time.monotonic() - t_start) * 1000)
-    result['elapsed_ms'] = elapsed
-    print(f'\n  Done — {elapsed} ms')
-    print(f"{'='*60}\n")
-
-    return result
+def calibrate_status(request):
+    return JsonResponse({
+        "running": _calibration_status["running"],
+        "result":  _calibration_status["result"],
+        "error":   _calibration_status["error"],
+    })
