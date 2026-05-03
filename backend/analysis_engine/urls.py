@@ -117,4 +117,5 @@ urlpatterns = [
     # ── Internal ──────────────────────────────────────────────────────────────
     # POST /api/analysis/trigger_calibrate/
     path('trigger_calibrate/', trigger_calibrate, name='trigger_calibrate'),
+    path('calibrate/', trigger_calibrate, name='calibrate_shortcut'),
 ]
