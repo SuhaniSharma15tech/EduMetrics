@@ -117,8 +117,8 @@ assert sum(WEIGHTS.values()) == 100, "WEIGHTS must sum to 100"
 # Tier thresholds
 TIER1_PERCENTILE = 90
 TIER2_PERCENTILE = 80
-TIER1_ABS        = 60   # risk_score must also exceed this for Tier 1
-TIER2_ABS        = 35   # risk_score alone above this → Tier 2
+TIER1_ABS        = 50   # risk_score must also exceed this for Tier 1
+TIER2_ABS        = 30   # risk_score alone above this → Tier 2
 
 # Hard-rule override thresholds
 OVERRIDE_PLAG_PCT = 50   # max plag % in window > this  → always Tier 1
