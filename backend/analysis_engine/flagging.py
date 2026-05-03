@@ -98,7 +98,7 @@ WINDOW_SIZE = 3   # look back up to this many qualifying weeks
 STREAK_CAP = 3
 
 # Threshold for high-risk-streak signal
-HIGH_RISK_THRESHOLD = 50
+HIGH_RISK_THRESHOLD = 40
 
 # Weights — MUST sum to 100 so the weighted sum lands in [0, 100]
 WEIGHTS = dict(
