@@ -1540,3 +1540,215 @@ body {
   font-weight: 800;
   color: var(--txt1);
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+/* ── Analyse with AI button (on flag card) ─────────────────────────────────── */
+.ai-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(99, 102, 241, 0.35);
+  background: rgba(99, 102, 241, 0.08);
+  color: #818cf8;
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+.ai-btn:hover {
+  background: rgba(99, 102, 241, 0.18);
+  border-color: rgba(99, 102, 241, 0.55);
+}
+ 
+/* ── "Analyse with AI" trigger inside the detail overlay ───────────────────── */
+.ai-analyse-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  margin: 16px 0 0;
+  padding: 10px 16px;
+  border-radius: 10px;
+  border: 1px dashed rgba(99, 102, 241, 0.4);
+  background: rgba(99, 102, 241, 0.06);
+  color: #818cf8;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.ai-analyse-btn:hover {
+  background: rgba(99, 102, 241, 0.14);
+  border-color: rgba(99, 102, 241, 0.6);
+}
+ 
+/* ── AI Analysis Panel ─────────────────────────────────────────────────────── */
+#aiAnalysisPanel {
+  margin-top: 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  background: rgba(99, 102, 241, 0.04);
+  padding: 14px 16px;
+  animation: fadeIn 0.25s ease;
+}
+ 
+.ai-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.ai-panel-title {
+  font-size: 12.5px;
+  font-weight: 800;
+  color: var(--txt);
+  letter-spacing: .02em;
+}
+.ai-urgency-badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 20px;
+}
+ 
+/* Recommendation box */
+.ai-recommendation-box {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  background: var(--bg2);
+  border-radius: 9px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+}
+.ai-rec-icon { font-size: 18px; flex-shrink: 0; }
+.ai-rec-label { font-size: 12px; font-weight: 800; margin-bottom: 2px; }
+.ai-rec-secondary { font-size: 10.5px; color: var(--txt2); margin-bottom: 2px; }
+.ai-rec-desc { font-size: 11px; color: var(--txt3); line-height: 1.5; }
+ 
+/* Reasoning */
+.ai-section-label {
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--txt3);
+  margin-bottom: 5px;
+}
+.ai-reasoning { margin-bottom: 12px; }
+.ai-reasoning-text {
+  font-size: 11.5px;
+  color: var(--txt2);
+  line-height: 1.6;
+  margin: 0;
+}
+ 
+/* Talking points */
+.ai-talking-points {
+  margin: 0 0 12px;
+  padding-left: 18px;
+}
+.ai-talking-points li {
+  font-size: 11.5px;
+  color: var(--txt2);
+  line-height: 1.6;
+  margin-bottom: 4px;
+}
+ 
+/* Action buttons */
+.ai-action-btns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 6px;
+}
+.ai-action-btn {
+  padding: 7px 13px;
+  border-radius: 8px;
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  background: rgba(99, 102, 241, 0.1);
+  color: #818cf8;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.ai-action-btn:hover { background: rgba(99, 102, 241, 0.2); }
+.ai-action-btn--secondary {
+  border-color: rgba(210, 153, 34, 0.3);
+  background: rgba(210, 153, 34, 0.08);
+  color: var(--amber);
+}
+.ai-action-btn--secondary:hover { background: rgba(210, 153, 34, 0.16); }
+ 
+/* Generated content output */
+.ai-content-output {
+  margin-top: 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.ai-content-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: var(--bg3);
+  border-bottom: 1px solid var(--border);
+}
+.ai-content-type-label {
+  font-size: 10.5px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  color: var(--txt2);
+}
+.ai-copy-btn {
+  padding: 3px 9px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg2);
+  color: var(--txt2);
+  font-size: 10.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.ai-copy-btn:hover { background: var(--bg3); }
+.ai-content-body {
+  padding: 12px 14px;
+  margin: 0;
+  font-size: 11.5px;
+  line-height: 1.7;
+  color: var(--txt);
+  white-space: pre-wrap;
+  word-break: break-word;
+  background: var(--bg2);
+  font-family: inherit;
+  max-height: 320px;
+  overflow-y: auto;
+}
+ 
+/* Loading state inside AI panel */
+.ai-panel-loading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  color: var(--txt2);
+  font-size: 12px;
+}
