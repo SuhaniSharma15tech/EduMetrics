@@ -238,9 +238,14 @@ function normaliseLastWeekFlags(raw) {
       etPrev: Math.round(etPrev), etCurr,
       atPrev: Math.round(atPrev), atCurr,
       riskPrev: Math.round(rkPrev), riskCurr,
-      recovery: Math.max(5, 100 - riskCurr),
+      flaggedAgain: f.more?.flagged_again ?? null,
       intervention: null,
       factors: buildFactorsFromDiagnosis(diagnosis, Math.round(more.avg_risk_score || 0)),
+      topSignal:        f.top_signal         || null,
+      weekN:            f.week_n             || null,   // all metrics at flag week
+      weekN1:           f.week_n1            || null,   // all metrics this week
+      riskBreakdownPrev: f.risk_breakdown_prev || [],
+      riskBreakdownCurr: f.risk_breakdown_curr || [],
     };
   });
 }
@@ -365,6 +370,7 @@ function statusCfg(s) {
   };
   return m[s] || m.monitor;
 }
+
 
 // ── THEME (locked to light — toggle removed from UI) ──────────────────────────
 function setTheme() { /* light mode is permanent; no-op */ }
@@ -514,7 +520,8 @@ function buildLastWeekCards() {
     card.innerHTML = `
       <div class="flag-top-row">
         <div class="flag-identity">
-            <div class="flag-av" style="background:${r.bg};color:${r.txt};width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:10px;flex-shrink:0">${s.avatar}</div>
+          <div class="flag-av" style="background:${r.bg};color:${r.txt};width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:10px;flex-shrink:0">${s.avatar}</div>
+          <div>
             <div class="flag-name">${s.name}</div>
             <div class="flag-id">${s.id}</div>
           </div>
@@ -523,12 +530,28 @@ function buildLastWeekCards() {
           <span class="rpd" style="background:${r.txt}"></span>${r.label}
         </span>
       </div>
-      <div class="flag-reason">${s.reason}</div>
-      <div class="flag-btn-row">
+      <div class="flag-top-factor" style="border-left:3px solid ${r.txt}">
+        ${topFactorLabel(s.topSignal) || s.reason.split('|')[0].trim()}
+      </div>
+      ${_lwSignalDelta(s.topSignal, r)}
+      <div class="flag-btn-row" style="margin-top:8px">
         <button class="view-btn" style="background:${r.bg};color:${r.txt};border:1px solid ${r.border}" onclick="openLwDetailById('${s.id}')">View Details →</button>
       </div>`;
     lwg.appendChild(card);
   });
+}
+
+function _lwSignalDelta(topSignal, r) {
+  if (!topSignal || topSignal.pct_change === null || topSignal.pct_change === undefined) return '';
+  const pct    = topSignal.pct_change;
+  const isGood = pct <= 0;   // for risk signals, going down is good
+  const color  = isGood ? 'var(--green)' : 'var(--red)';
+  const arrow  = pct > 0 ? '▲' : '▼';
+  const sign   = pct > 0 ? '+' : '';
+  return `<div class="lw-delta-row">
+    <span class="lw-delta-label">Since flagged:</span>
+    <span class="lw-delta-val" style="color:${color}">${arrow} ${sign}${pct}%</span>
+  </div>`;
 }
 
 // ── LAST WEEK DETAIL ──────────────────────────────────────────────────────────
@@ -539,45 +562,153 @@ function openLwDetailById(id) {
 }
 
 function openLwDetail(idx) {
-  const s = LAST_WEEK[idx]; const r = rc(s.risk); const sc = statusCfg(s.status);
-  document.getElementById('lwDmAv').textContent = s.avatar;
-  document.getElementById('lwDmAv').style.cssText = `background:${r.bg};color:${r.txt};width:46px;height:46px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;flex-shrink:0`;
+  const s  = LAST_WEEK[idx];
+  const r  = rc(s.risk);
+  const sc = statusCfg(s.status);
+ 
+  // Header
+  const avEl = document.getElementById('lwDmAv');
+  avEl.textContent = s.avatar;
+  avEl.style.cssText = `background:${r.bg};color:${r.txt};width:46px;height:46px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;flex-shrink:0`;
   document.getElementById('lwDmTitle').textContent = s.name;
-  document.getElementById('lwDmSub').textContent = s.id;
-  document.getElementById('lwDmRisk').innerHTML = `<span class="rpd" style="background:${r.txt}"></span>${r.label}`;
-  document.getElementById('lwDmRisk').style.cssText = `background:${r.bg};color:${r.txt};border:1px solid ${r.border};display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:700;padding:4px 10px;border-radius:20px`;
-  const etDir = s.etCurr >= s.etPrev, atDir = s.atCurr >= s.atPrev, rkDir = s.riskCurr >= s.riskPrev;
+  document.getElementById('lwDmSub').textContent   = s.id;
+  const pillEl = document.getElementById('lwDmRisk');
+  pillEl.innerHTML = `<span class="rpd" style="background:${r.txt}"></span>${r.label}`;
+  pillEl.style.cssText = `background:${r.bg};color:${r.txt};border:1px solid ${r.border};display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:700;padding:4px 10px;border-radius:20px`;
+ 
+  // Metric comparison table
+  const wn  = s.weekN  || {};
+  const wn1 = s.weekN1 || {};
+ 
+  const METRIC_ROWS = [
+    { label: 'Effort Score',          key: 'effort_score',         unit: '%',  higherGood: true  },
+    { label: 'Academic Performance',  key: 'academic_performance', unit: '%',  higherGood: true  },
+    { label: 'Weekly Attendance',     key: 'weekly_att_pct',       unit: '%',  higherGood: true  },
+    { label: 'Overall Attendance',    key: 'overall_att_pct',      unit: '%',  higherGood: true  },
+    { label: 'Risk of Detention',     key: 'risk_of_detention',    unit: '/100', higherGood: false },
+    { label: 'Risk Score',            key: 'risk_score',           unit: '',   higherGood: false },
+    { label: 'Quiz Avg',              key: 'quiz_avg_pct',         unit: '%',  higherGood: true  },
+    { label: 'Assignment Avg',        key: 'assn_avg_pct',         unit: '%',  higherGood: true  },
+    { label: 'Assignment Submit Rate',key: 'assn_submit_rate',     unit: '',   higherGood: true  },
+    { label: 'Quiz Attempt Rate',     key: 'quiz_attempt_rate',    unit: '',   higherGood: true  },
+  ];
+ 
+  function _pctChange(prev, curr) {
+    if (prev == null || prev === 0) return null;
+    return ((curr - prev) / Math.abs(prev) * 100).toFixed(1);
+  }
+ 
+  const metricRowsHTML = METRIC_ROWS.map(row => {
+    const prev = wn[row.key]  ?? '—';
+    const curr = wn1[row.key] ?? '—';
+    if (prev === '—' && curr === '—') return '';
+ 
+    const prevNum = parseFloat(prev);
+    const currNum = parseFloat(curr);
+    const pct     = (!isNaN(prevNum) && !isNaN(currNum)) ? _pctChange(prevNum, currNum) : null;
+ 
+    let pctHTML = '';
+    if (pct !== null) {
+      const improved = row.higherGood ? currNum >= prevNum : currNum <= prevNum;
+      const color    = improved ? 'var(--green)' : 'var(--red)';
+      const arrow    = currNum > prevNum ? '▲' : currNum < prevNum ? '▼' : '→';
+      const sign     = parseFloat(pct) > 0 ? '+' : '';
+      pctHTML = `<span class="lw-pct-change" style="color:${color}">${arrow} ${sign}${pct}%</span>`;
+    }
+ 
+    return `<tr>
+      <td class="lw-cmp-label">${row.label}</td>
+      <td class="lw-cmp-val">${prev}${row.unit}</td>
+      <td class="lw-cmp-val">${curr}${row.unit}</td>
+      <td class="lw-cmp-delta">${pctHTML}</td>
+    </tr>`;
+  }).join('');
+ 
+  // Risk breakdown comparison
+  function _breakdownTable(bd, title) {
+    if (!bd || !bd.length) return '';
+    const totalScore = bd.reduce((s, r) => s + r.contribution, 0).toFixed(1);
+    return `
+      <div class="lw-bd-title">${title}</div>
+      <table class="risk-bd-table">
+        <thead><tr>
+          <th>Factor</th><th>Value</th><th>Contributed</th><th>Max</th>
+        </tr></thead>
+        <tbody>
+          ${bd.map(row => {
+            const pct = row.max_contribution > 0 ? row.contribution / row.max_contribution : 0;
+            const bc  = pct > 0.7 ? 'var(--red)' : pct > 0.4 ? 'var(--amber)' : 'var(--green)';
+            return `<tr>
+              <td class="risk-bd-label">${row.label}</td>
+              <td class="risk-bd-val">${row.current_value}${row.unit}</td>
+              <td class="risk-bd-contrib">
+                <div class="risk-bd-bar-wrap"><div class="risk-bd-bar" style="width:${Math.round(pct*100)}%;background:${bc}"></div></div>
+                <span>${row.contribution}</span>
+              </td>
+              <td class="risk-bd-max">${row.max_contribution}</td>
+            </tr>`;
+          }).join('')}
+          <tr class="risk-bd-total">
+            <td colspan="2"><strong>Total Risk Score</strong></td>
+            <td><strong>${totalScore}</strong></td>
+            <td><strong>100</strong></td>
+          </tr>
+        </tbody>
+      </table>`;
+  }
+ 
+  const etDir = s.etCurr >= s.etPrev;
+  const rkDir = s.riskCurr >= s.riskPrev;
+ 
   document.getElementById('lwDmBody').innerHTML = `
+ 
+    <!-- Week N vs N+1 metrics table -->
+    <div class="dm-panel">
+      <div class="lw-section-label">Week ${wn.week || '?'} → Week ${wn1.week || '?'} Comparison</div>
+      <table class="lw-cmp-table">
+        <thead><tr>
+          <th>Metric</th>
+          <th>Week ${wn.week || 'N'} (flagged)</th>
+          <th>Week ${wn1.week || 'N+1'} (now)</th>
+          <th>Change</th>
+        </tr></thead>
+        <tbody>${metricRowsHTML}</tbody>
+      </table>
+    </div>
+ 
+    <!-- Risk score breakdowns side by side -->
     <div class="lw-two-col">
       <div class="dm-panel">
-        <div class="lw-section-label">About the Student</div>
-        <div class="lw-stat-row"><span class="lw-stat-label">Avg Risk Score</span><span class="lw-stat-val">${s.avgRisk}%</span></div>
-        <div class="lw-stat-row"><span class="lw-stat-label">Avg Effort</span><span class="lw-stat-val">${s.avgEt}%</span></div>
-        <div class="lw-stat-row"><span class="lw-stat-label">Avg Academic Perf</span><span class="lw-stat-val">${s.avgAt}%</span></div>
-        <div class="lw-stat-row"><span class="lw-stat-label">Overall Attendance</span><span class="lw-stat-val">${s.overallAttend}%</span></div>
-        <div class="lw-stat-row"><span class="lw-stat-label">Risk of Detention</span><span class="lw-stat-val" style="color:${s.riskDetention > 60 ? 'var(--red)' : s.riskDetention > 40 ? 'var(--amber)' : 'var(--green)'}">${s.riskDetention}%</span></div>
-        <div class="lw-stat-row"><span class="lw-stat-label">Risk of Failing</span><span class="lw-stat-val" style="color:${s.riskFailing > 60 ? 'var(--red)' : s.riskFailing > 40 ? 'var(--amber)' : 'var(--green)'}">${s.riskFailing}%</span></div>
-        <div class="lw-stat-row"><span class="lw-stat-label">Midterm Score</span><span class="lw-stat-val">${s.midterm}</span></div>
+        ${_breakdownTable(s.riskBreakdownPrev, `Risk Breakdown — Week ${wn.week || 'N'}`)}
       </div>
       <div class="dm-panel">
-        <div class="lw-section-label">Reason for Flagging</div>
-        ${(s.factors || []).map(f => `<div class="factor-bar-row"><div class="factor-bar-top"><span class="factor-bar-label">${f.label}</span><span class="factor-bar-pct" style="color:${f.color}">${f.pct}%</span></div><div class="factor-bar-track"><div class="factor-bar-fill" style="width:${f.pct}%;background:${f.color}"></div></div></div>`).join('')}
+        ${_breakdownTable(s.riskBreakdownCurr, `Risk Breakdown — Week ${wn1.week || 'N+1'}`)}
       </div>
     </div>
-    <div class="dm-panel">
-      <div class="lw-section-label">This Week vs Last Week</div>
-      <div class="situation-grid">
-        <div class="sit-item"><div class="sit-label">Effort</div><div class="sit-vals"><span class="sit-val">${s.etCurr}%</span><span class="sit-arrow" style="color:${etDir ? 'var(--green)' : 'var(--red)'}">${etDir ? '▲' : '▼'}</span><span class="sit-change" style="color:${etDir ? 'var(--green)' : 'var(--red)'}">${Math.abs(s.etCurr - s.etPrev)}</span></div><div style="font-size:10px;color:var(--txt3);margin-top:3px">prev: ${s.etPrev}%</div></div>
-        <div class="sit-item"><div class="sit-label">Acad. Perf</div><div class="sit-vals"><span class="sit-val">${s.atCurr}%</span><span class="sit-arrow" style="color:${atDir ? 'var(--green)' : 'var(--red)'}">${atDir ? '▲' : '▼'}</span><span class="sit-change" style="color:${atDir ? 'var(--green)' : 'var(--red)'}">${Math.abs(s.atCurr - s.atPrev)}</span></div><div style="font-size:10px;color:var(--txt3);margin-top:3px">prev: ${s.atPrev}%</div></div>
-        <div class="sit-item"><div class="sit-label">Risk Score</div><div class="sit-vals"><span class="sit-val" style="color:${rkDir ? 'var(--red)' : 'var(--green)'}">${s.riskCurr}%</span><span class="sit-arrow" style="color:${rkDir ? 'var(--red)' : 'var(--green)'}">${rkDir ? '▲' : '▼'}</span><span class="sit-change" style="color:${rkDir ? 'var(--red)' : 'var(--green)'}">${Math.abs(s.riskCurr - s.riskPrev)}</span></div><div style="font-size:10px;color:var(--txt3);margin-top:3px">prev: ${s.riskPrev}%</div></div>
-      </div>
-    </div>
+ 
+    <!-- Bottom row: status / recovery / intervention (preserved) -->
     <div class="lw-bottom">
-      <div class="lw-bottom-item"><div class="lw-bottom-label">Recovery %</div><div class="lw-bottom-val" style="color:${s.recovery < 30 ? 'var(--red)' : s.recovery < 55 ? 'var(--amber)' : 'var(--green)'}">${s.recovery}%</div><div style="height:4px;background:var(--bg3);border-radius:10px;margin-top:8px;overflow:hidden"><div style="height:100%;width:${s.recovery}%;background:${s.recovery < 30 ? 'var(--red)' : s.recovery < 55 ? 'var(--amber)' : 'var(--green)'};border-radius:10px"></div></div></div>
-      <div class="lw-bottom-item"><div class="lw-bottom-label">Status</div><span class="status-pill" style="background:${sc.bg};color:${sc.txt};border:1px solid ${sc.border}">${sc.label}</span></div>
-      <div class="lw-bottom-item"><div class="lw-bottom-label">Intervention</div><div style="font-size:11.5px;color:var(--txt2);line-height:1.55;margin-top:4px">${s.intervention || 'None recorded'}</div></div>
+      <div class="lw-bottom-item">
+        <div class="lw-bottom-label">Flagged Again?</div>
+        ${s.flaggedAgain === true
+          ? `<span class="status-pill" style="background:rgba(248,81,73,0.1);color:var(--red);border:1px solid rgba(248,81,73,0.3)">⚑ Yes — still at risk</span>`
+          : s.flaggedAgain === false
+          ? `<span class="status-pill" style="background:rgba(63,185,80,0.1);color:var(--green);border:1px solid rgba(63,185,80,0.3)">✓ No — cleared this week</span>`
+          : `<span style="color:var(--txt3);font-size:12px">Not Flagged This Week</span>`
+        }
+      </div>
+      <div class="lw-bottom-item">
+        <div class="lw-bottom-label">Status</div>
+        <span class="status-pill" style="background:${sc.bg};color:${sc.txt};border:1px solid ${sc.border}">${sc.label}</span>
+      </div>
+      <div class="lw-bottom-item">
+        <div class="lw-bottom-label">Intervention</div>
+        <div style="font-size:11.5px;color:var(--txt2);line-height:1.55;margin-top:4px">${s.intervention||'None recorded'}</div>
+      </div>
     </div>`;
-  document.getElementById('lwOverlay').classList.add('open'); document.body.style.overflow = 'hidden';
+ 
+  document.getElementById('lwOverlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
 }
 
 function closeLwOverlay() { document.getElementById('lwOverlay').classList.remove('open'); document.body.style.overflow = ''; }
