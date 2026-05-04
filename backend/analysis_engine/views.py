@@ -1204,8 +1204,6 @@ def generate_content_view(request):
 
 
 
-
-
 @api_view(['GET'])
 def last_weeks_flags(request):
     """
@@ -1483,6 +1481,7 @@ def last_weeks_flags(request):
                 'overall_attendance':       round(_f(prev_m.get('overall_att_pct')), 1),
                 'risk_of_detention':        round(_f(prev_m.get('risk_of_detention')), 1),
                 'mid_term_score':           _get_midterm_score(sid, semester),
+                'flagged_again': sid in curr_flags_map,
             },
 
             # Card face
@@ -1519,138 +1518,8 @@ def last_weeks_flags(request):
         }
 
     return Response(result)
-    """
-    GET /api/analysis/flags/last_week/?class_id=X&semester=Y&sem_week=Z
 
-    Returns flags from the previous week with delta comparisons.
-    Shape matches last_weeks_flags() spec in newViews.py.
-    """
-    params, err = _require(request, 'class_id', 'semester', 'sem_week')
-    if err:
-        return err
-
-    class_id  = params['class_id']
-    semester  = int(params['semester'])
-    sem_week  = int(params['sem_week'])
-    prev_week = sem_week - 1
-
-    if prev_week < 1:
-        return Response({})
-
-    prev_flags = weekly_flags.objects.filter(
-        class_id=class_id, semester=semester, sem_week=prev_week
-    ).order_by('-urgency_score')
-
-    names = _name_map(class_id)
-    result = {}
-    
-    prev_flags = list(prev_flags)  # evaluate once
-    student_ids = [f.student_id for f in prev_flags]
-
-    # ✅ FIX: All queries outside the loop
-    curr_metrics_map = {
-        m.student_id: m
-        for m in weekly_metrics.objects.filter(
-            student_id__in=student_ids, semester=semester, sem_week=sem_week
-        )
-    }
-    prev_metrics_map = {
-        m.student_id: m
-        for m in weekly_metrics.objects.filter(
-            student_id__in=student_ids, semester=semester, sem_week=prev_week
-        )
-    }
-    traj_map = {}
-    for m in weekly_metrics.objects.filter(
-        student_id__in=student_ids, semester=semester, sem_week__lte=prev_week
-    ).order_by('sem_week').values('student_id', 'effort_score', 'academic_performance', 'overall_att_pct'):
-        traj_map.setdefault(m['student_id'], []).append(m)
-
-    curr_flags_map = {
-        f.student_id: f
-        for f in weekly_flags.objects.filter(
-            student_id__in=student_ids, semester=semester, sem_week=sem_week
-        )
-    }
-
-    for flag in prev_flags:
-        sid  = flag.student_id
-        name = names.get(sid, sid)
-
-        curr_m = weekly_metrics.objects.filter(
-            student_id=sid, semester=semester, sem_week=sem_week
-        ).first()
-        prev_m = weekly_metrics.objects.filter(
-            student_id=sid, semester=semester, sem_week=prev_week
-        ).first()
-
-        pmt = pre_mid_term.objects.filter(
-            student_id=sid, semester=semester
-        ).order_by('-sem_week').first()
-
-        # historical metrics
-        traj = list(weekly_metrics.objects.filter(
-            student_id=sid, semester=semester, sem_week__lte=prev_week
-        ).order_by('sem_week').values('effort_score', 'academic_performance', 'overall_att_pct'))
-        week_et   = [_f(r['effort_score']) for r in traj]
-        week_perf = [_f(r['academic_performance']) for r in traj]
-
-        avg_risk  = _cap(flag.urgency_score)
-        avg_et    = round(sum(week_et)   / max(len(week_et),   1), 2)
-        avg_perf  = round(sum(week_perf) / max(len(week_perf), 1), 2)
-
-        result[flag.id] = {
-            'basic_details': [
-                sid,
-                name,
-                flag.diagnosis,
-                flag.risk_tier,
-            ],
-            'more': {
-                'avg_risk_score':           avg_risk,
-                'avg_effort':               avg_et,
-                'avg_academic_performance': avg_perf,
-                'overall_attendance':       round(_f(prev_m.overall_att_pct if prev_m else None), 1),
-                'risk_of_detention':        round(_f(prev_m.risk_of_detention if prev_m else None), 1),
-                'mid_term_score':           _get_midterm_score(sid, semester),
-                'flagged_again': sid in curr_flags_map,
-            },
-            'diagnosis': {
-                part.strip(): round(avg_risk / max(len(flag.diagnosis.split('|')), 1), 1)
-                for part in (flag.diagnosis or '').split('|') if part.strip()
-            },
-            'this_week_vs_last_week': {
-                'effort': {
-                    'delta_E_t':      round(
-                        _f(curr_m.effort_score if curr_m else None) -
-                        _f(prev_m.effort_score if prev_m else None), 2
-                    ),
-                    'E_t_previous':   _f(prev_m.effort_score if prev_m else None),
-                },
-                'performance': {
-                    'delta_A_t':      round(
-                        _f(curr_m.academic_performance if curr_m else None) -
-                        _f(prev_m.academic_performance if prev_m else None), 2
-                    ),
-                    'A_t_previous':   _f(prev_m.academic_performance if prev_m else None),
-                },
-                'risk_score': {
-                    'delta_risk_score':   0,   # will be filled once curr flag is fetched
-                    'risk_score_previous': avg_risk,
-                },
-            },
-        }
-
-        # fill delta_risk_score if current-week flag exists
-        curr_flag = weekly_flags.objects.filter(
-            student_id=sid, semester=semester, sem_week=sem_week
-        ).first()
-        if curr_flag:
-            result[flag.id]['this_week_vs_last_week']['risk_score']['delta_risk_score'] = (
-                _cap(curr_flag.urgency_score) - avg_risk
-            )
-
-    return Response(result)
+      
 
 
 # ─────────────────────────────────────────────────────────────────────────────
