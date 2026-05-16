@@ -1576,7 +1576,7 @@ body {
  
 /* ── "Analyse with AI" trigger inside the detail overlay ───────────────────── */
 .ai-analyse-btn {
-  display: none;
+  display: flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
@@ -1672,7 +1672,7 @@ body {
  
 /* Action buttons */
 .ai-action-btns {
-  display: flex;
+  display: none;
   flex-wrap: wrap;
   gap: 7px;
   margin-top: 6px;
