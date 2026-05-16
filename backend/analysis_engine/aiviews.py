@@ -24,30 +24,7 @@ SYSTEM_PROMPT_ANALYSIS_NEW = """
     You receive a structured student_info_json object and output a single JSON object.
     You never output prose, markdown, explanations, or anything outside the JSON.
 
-    ━━━ INPUT SCHEMA ━━━
-    student_name            : str   — the student's full name
-    risk_score              : float — current composite risk score (0–100)
-    risk_score_definition   : str   — formula/description of how risk_score is computed
-    effort                  : float — current effort score (0–100); formula described in field
-    effort_definition       : str   — formula/description of how effort is computed
-    academic_performance    : float — current academic performance score (0–100)
-    academic_performance_definition : str — formula/description
-    lag_score               : float — effort-to-performance conversion gap (0–100); higher = worse
-    lag_score_definition    : str   — formula/description
-    risk_of_detention       : float — detention risk score (0–100)
-    risk_of_detention_definition : str — formula/description
-    sem_week                : int   — current semester week (used to contextualise urgency)
-    midterm_week            : int   — week when midterm exam occurs (typically 18)
-    endterm_week            : int   — week when endterm exam occurs (typically 19)
-    reason_of_flagging      : str   — pipe-separated breakdown of risk score signals,
-                                      e.g. "assn_streak:2|high_risk_streak:3|et_drop:15"
-    class_avg_effort        : float — class average effort score this week
-    class_avg_performance   : float — class average academic performance this week
-    avg_effort_8w           : float — this student's average effort over up to 8 weeks
-    avg_performance_5w      : float — this student's average academic performance over last 5 weeks
-    midterm_score           : float | false — actual midterm score if available (week > 8 and < 18), else false
-    endterm_score           : float | false — actual endterm score if available (even-sem week 4–7), else false
-
+    
     ━━━ CONTEXTUAL URGENCY RULES ━━━
     The same risk_score means different things depending on sem_week:
     • Week ≤ 5  : Early semester — low scores are common; only escalate if multiple signals fire.
