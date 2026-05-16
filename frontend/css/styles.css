@@ -1672,7 +1672,7 @@ body {
  
 /* Action buttons */
 .ai-action-btns {
-  display: none;
+  display: flex;
   flex-wrap: wrap;
   gap: 7px;
   margin-top: 6px;
