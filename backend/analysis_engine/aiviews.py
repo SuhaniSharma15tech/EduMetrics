@@ -6,11 +6,9 @@ import requests
 from dotenv import load_dotenv
 
 load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), '../.env'))
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-GEMINI_URL = (
-    "https://generativelanguage.googleapis.com/v1beta/models/"
-    "gemini-2.0-flash:generateContent"
-)
+# NEW
+XAI_API_KEY = os.getenv("XAI_API_KEY")
+XAI_URL = "https://api.x.ai/v1/chat/completions"
 
 
 
@@ -200,66 +198,57 @@ VALID_CONTENT_TYPES = {
 # HELPERS
 # ─────────────────────────────────────────────────────────────────────────────
 
+# NEW
 def _call_gemini(system_prompt: str, user_message: str, temperature: float = 0.2) -> str:
     """
-    Low-level wrapper around the Gemini generateContent REST endpoint.
-    Retries on 429 (rate limit) with exponential backoff.
+    Calls xAI Grok API (OpenAI-compatible). Retries on 429 with exponential backoff.
     """
-    if not GEMINI_API_KEY:
-        raise EnvironmentError("GEMINI_API_KEY environment variable is not set.")
+    if not XAI_API_KEY:
+        raise EnvironmentError("XAI_API_KEY environment variable is not set.")
 
     payload = {
-        "system_instruction": {
-            "parts": [{"text": system_prompt}]
-        },
-        "contents": [
-            {
-                "role": "user",
-                "parts": [{"text": user_message}],
-            }
+        "model": "grok-3-mini",
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user",   "content": user_message},
         ],
-        "generationConfig": {
-            "temperature": temperature,
-            "responseMimeType": "text/plain",
-        },
+        "temperature": temperature,
     }
 
     MAX_RETRIES = 4
-    backoff = 5  # seconds — starts at 5s, doubles each retry (5→10→20→40)
+    backoff = 5
 
     for attempt in range(MAX_RETRIES):
         response = requests.post(
-            GEMINI_URL,
+            XAI_URL,
             headers={
                 "Content-Type": "application/json",
-                "x-goog-api-key": GEMINI_API_KEY,
+                "Authorization": f"Bearer {XAI_API_KEY}",
             },
             json=payload,
             timeout=60,
         )
 
         if response.status_code == 429:
-            # Respect Retry-After header if present, otherwise use backoff
             retry_after = response.headers.get("Retry-After")
             wait = int(retry_after) if retry_after else backoff
             if attempt < MAX_RETRIES - 1:
                 time.sleep(wait)
                 backoff *= 2
                 continue
-            # Final attempt also failed — raise with clear message
             response.raise_for_status()
+
         if not response.ok:
-            print(f"Gemini error {response.status_code}: {response.text}")
+            print(f"xAI error {response.status_code}: {response.text}")
         response.raise_for_status()
         break
 
     data = response.json()
 
     try:
-        return data["candidates"][0]["content"]["parts"][0]["text"]
+        return data["choices"][0]["message"]["content"]
     except (KeyError, IndexError) as exc:
-        raise ValueError(f"Unexpected Gemini response structure: {data}") from exc
-
+        raise ValueError(f"Unexpected xAI response structure: {data}") from exc
 
 def _extract_json(raw: str) -> dict:
     """Strips markdown fences then parses JSON."""
