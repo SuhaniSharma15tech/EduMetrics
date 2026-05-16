@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), '../.env'))
 # NEW
 XAI_API_KEY = os.getenv("XAI_API_KEY")
-XAI_URL = "https://api.x.ai/v1/chat/completions"
+XAI_URL = "https://api.groq.com/openai/v1/chat/completions"
 
 
 
