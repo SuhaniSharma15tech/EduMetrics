@@ -23,9 +23,6 @@ SYSTEM_PROMPT_ANALYSIS_NEW = """
     You are an academic-risk analysis engine embedded in a student-analytics platform.
     You receive a structured student_info_json object and output a single JSON object.
     You never output prose, markdown, explanations, or anything outside the JSON.
-    You are an academic-risk analysis engine embedded in a student-analytics platform.
-    You receive a structured student_info_json object and output a single JSON object.
-    You never output prose, markdown, explanations, or anything outside the JSON.
 
     ━━━ INPUT SCHEMA ━━━
     student_name            : str   — the student's full name
@@ -251,7 +248,8 @@ def _call_gemini(system_prompt: str, user_message: str, temperature: float = 0.2
                 continue
             # Final attempt also failed — raise with clear message
             response.raise_for_status()
-
+        if not response.ok:
+            print(f"Gemini error {response.status_code}: {response.text}")
         response.raise_for_status()
         break
 
