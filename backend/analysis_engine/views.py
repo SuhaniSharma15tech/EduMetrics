@@ -1111,6 +1111,11 @@ def student_summary_view(request):
         "reason_of_flagging":               flag.diagnosis or '',
         "class_avg_effort":                 class_avg_effort,
         "class_avg_performance":            class_avg_performance,
+        "avg_effort_8w":                    avg_effort_8w,
+        "avg_performance_5w":               avg_performance_5w,
+        "midterm_score":                    midterm_score,
+        "endterm_score":                    endterm_score,
+    }
 
     # ── Call AI ───────────────────────────────────────────────────────────────
     try:
