@@ -207,7 +207,7 @@ def _call_gemini(system_prompt: str, user_message: str, temperature: float = 0.2
         raise EnvironmentError("XAI_API_KEY environment variable is not set.")
 
     payload = {
-        "model": "grok-3-mini",
+        "model": "llama-3.3-70b-versatile",
         "messages": [
             {"role": "system", "content": system_prompt},
             {"role": "user",   "content": user_message},
