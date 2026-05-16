@@ -1065,25 +1065,52 @@ def student_summary_view(request):
         endterm_score = _get_endterm_score(sid, semester)
 
 
+    RISK_SCORE_DEF = (
+        "Composite risk score (0–100) computed as a weighted sum of: "
+        "risk_of_detention (w=30), assignment_streak (w=15), quiz_streak (w=8), "
+        "high_risk_streak (w=12), lag_score_penalty (w=10), avg_risk_3w (w=7), "
+        "avg_academic_performance_3w (w=5), avg_effort_3w (w=5), effort_drop (w=8)."
+    )
+    EFFORT_DEF = (
+        "Effort score (0–100) reflects deliberate academic behaviours weighted as: "
+        "library_visits, book_borrows, plagiarism_free_submissions, quiz_attempts, "
+        "assignment_submission_rate, and attendance. Higher = more effort."
+    )
+    ACADEMIC_PERF_DEF = (
+        "Academic performance score (0–100) derived from quiz scores and assignment "
+        "scores for the current week. Null/0 if no assessments occurred."
+    )
+    LAG_SCORE_DEF = (
+        "Lag score (0–100) measures the gap between effort invested and academic "
+        "output achieved, compared against the class average ratio. Higher = effort "
+        "is not converting into performance (comprehension gap)."
+    )
+    RISK_DETENTION_DEF = (
+        "Risk of detention (0–100) based on cumulative attendance percentage relative "
+        "to the institution's minimum attendance threshold (typically 75%)."
+    )
+
     # ── Assemble student_info_json ────────────────────────────────────────────
     student_info_json = {
         "student_name":                     student_name,
         "risk_score":                       _cap(m.risk_score if m else flag.urgency_score),
+        "risk_score_definition":            RISK_SCORE_DEF,
         "effort":                           _f(m.effort_score if m else None),
+        "effort_definition":                EFFORT_DEF,
         "academic_performance":             _f(m.academic_performance if m else None),
+        "academic_performance_definition":  ACADEMIC_PERF_DEF,
         "lag_score":                        _f(getattr(m, 'lag_score', None) if m else None),
+        "lag_score_definition":             LAG_SCORE_DEF,
         "risk_of_detention":                _f(m.risk_of_detention if m else None),
+        "risk_of_detention_definition":     RISK_DETENTION_DEF,
         "sem_week":                         sem_week,
+        "midterm_week":                     18,
+        "endterm_week":                     19,
         "midterm_week":                     8,
         "endterm_week":                     18,
         "reason_of_flagging":               flag.diagnosis or '',
         "class_avg_effort":                 class_avg_effort,
         "class_avg_performance":            class_avg_performance,
-        "avg_effort_8w":                    avg_effort_8w,
-        "avg_performance_5w":               avg_performance_5w,
-        "midterm_score":                    midterm_score,
-        "endterm_score":                    endterm_score,
-    }
 
     # ── Call AI ───────────────────────────────────────────────────────────────
     try:
